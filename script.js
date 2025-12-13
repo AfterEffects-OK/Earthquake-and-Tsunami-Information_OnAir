@@ -4791,12 +4791,7 @@ const generateAndShowBroadcastScript = (eq) => {
             scriptContent.push(`\n【${view.shindo}】`);
             lastShindo = view.shindo;
         }
-        // ★★★ マグニチュードの行の文言を変更 ★★★
-        if (text.includes('地震の規模は マグニチュード')) {
-            scriptContent.push(`地震の規模を示す マグニチュードは ${eq.magnitude}と推定されています`);
-        } else {
-            scriptContent.push(text.replace(/　/g, ' '));
-        }
+        scriptContent.push(text.replace(/　/g, ' '));
     });
 
     // 2. 震度別市町村リストを取得
@@ -4832,12 +4827,20 @@ const generateAndShowBroadcastScript = (eq) => {
         const [_, month, day] = datePart.split('/');
         displayTime = `${parseInt(month, 10)}月${parseInt(day, 10)}日 ${formattedTimeForTelop}ごろ`;
     }
-    const firstLine = `${displayTime} ${epicenterHtml}を震源とする 最大${eq.maxShindoLabel}の地震がありました`;
     
-    // 最初の行を差し替え
-    const firstSummaryIndex = scriptContent.findIndex(line => line.includes('を震源とする'));
-    if (firstSummaryIndex !== -1) {
-        scriptContent[firstSummaryIndex] = firstLine;
+    // ★★★ 原稿冒頭の構成を変更 ★★★
+    const newFirstLines = [
+        `${displayTime} 最大${eq.maxShindoLabel}の地震がありました`,
+        `震源地は ${epicenterHtml}`,
+        `地震の規模を示す マグニチュードは ${eq.magnitude}と推定されています`
+    ];
+
+    // 既存の冒頭情報（「〜を震源とする」「地震の規模は〜」）を削除
+    const summaryStartIndex = scriptContent.findIndex(line => line.includes('を震源とする'));
+    if (summaryStartIndex !== -1) {
+        // 関連する行を2行削除し、新しい形式の行を挿入
+        const relatedLineCount = scriptContent.findIndex((line, index) => index > summaryStartIndex && line.includes('地震の規模は'));
+        scriptContent.splice(summaryStartIndex, (relatedLineCount !== -1 ? 2 : 1), ...newFirstLines);
     }
 
     const fullScript = scriptContent.join('\n').replace(/\n{2,}/g, '\n\n');

@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Google Fonts: BIZ UDPGothic (Bold 700) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=BIZ+UDPGothic:wght@700&display=swap" rel="stylesheet">
+
+    <!-- タイトルを最大震度3以上に更新 -->
+    <title>地震情報ライブモニター</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 外部CSS・JSファイルの読み込み -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<!-- 画面下部の固定バー（h-20）のスペースを確保するために pb-20 に変更 -->
+<body class="p-4 md:p-8 min-h-screen pb-32">
+    <!-- 訓練モード警告表示 -->
+    <div id="dummy-data-warning" class="hidden fixed top-0 left-0 right-0 bg-red-600 text-white text-center p-2 z-50 font-bold shadow-lg">
+        ★★★ 訓練モード有効 ★★★ この画面は訓練用です。配信には使用しないでください。
+    </div>
+
+    <div>
+        <div class="flex justify-between items-center mb-2">
+            <!-- タイトルを最大震度3以上に更新 -->
+            <h1 class="text-3xl font-extrabold text-white">地震情報ライブモニター</h1>
+            <!-- 緊急地震速報(EEW)アラート表示エリア -->
+            <div id="eew-alert-container" class="hidden items-center p-3 rounded-lg bg-red-800 border-2 border-red-500">
+                <svg id="eew-icon" class="w-8 h-8 text-red-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                <span id="eew-alert-text" class="text-xl font-bold text-white"></span>
+            </div>
+        </div>
+         <!-- 説明文を最大震度3以上に更新 -->
+        <p class="text-gray-400 mb-4">直近の地震の中から、最大震度3以上を観測した地震を抽出して表示します。</p>
+        <!-- メインコンテンツ (左右分割コンテナ) - md:grid-cols-3 に変更して 1:2 分割 (1/3 + 2/3) -->
+        <div class="grid grid-cols-1 md:grid-cols-3 md:gap-8 full-height-panel-wrapper">
+            
+            <!-- 左パネル: 地震一覧 (1/3 幅) -->
+            <div id="list-panel" class="md:col-span-1 bg-gray-800 rounded-xl shadow-2xl px-4 pb-4 md:px-6 md:pb-6 mb-6 md:mb-0">
+                
+                <!-- 変更点: タイトルとリフレッシュボタンをflexコンテナにまとめる -->
+                <div class="flex justify-between items-center mb-2 border-b border-gray-700 pb-2 sticky top-0 bg-gray-800 z-10 pt-4">
+                    <h2 class="text-xl font-bold text-white">地震一覧</h2>
+                    <div class="flex items-center space-x-2">
+                        <button id="toggle-dummy-data-button" class="bg-yellow-600 hover:bg-yellow-700 text-white font-semibold py-1 px-3 rounded-lg shadow transition duration-150 text-sm">
+                            訓練モードへ
+                        </button>
+                        <button id="refresh-button" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-1 px-3 rounded-lg shadow transition duration-150 text-sm">
+                            <span id="refresh-text">API更新</span>
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- データの取得日時を表示する要素を追加 -->
+                <p id="fetch-time-display" class="text-xs text-gray-400 text-right mb-4">最終取得日時: データを取得していません</p>
+
+                <div id="loading" class="text-center p-8 text-xl font-medium text-blue-400 hidden">
+                    <div class="animate-spin inline-block w-8 h-8 border-4 border-blue-400 border-t-transparent rounded-full mr-3"></div>
+                    地震情報を取得中...
+                </div>
+
+                <div id="error-message" class="hidden bg-red-900/30 border-l-4 border-red-500 text-red-400 p-4 mb-4 rounded" role="alert">
+                    <p class="font-bold">エラーが発生しました</p>
+                    <p id="error-text">データの取得に失敗しました。APIの制限やネットワーク接続を確認してください。</p>
+                </div>
+
+                <div id="earthquake-list" class="space-y-3">
+                    <!-- 地震リストアイテムがここに挿入されます -->
+                </div>
+
+                <div id="no-data" class="hidden text-center p-8 text-gray-400 border-2 border-dashed border-gray-600 rounded-xl mt-6">
+                    <svg class="w-12 h-12 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    <!-- メッセージを最大震度3以上に更新 -->
+                    <p>直近で最大震度3以上の地震は観測されていません。</p>
+                </div>
+            </div>
+
+            <!-- 右パネル: 詳細表示 (2/3 幅に変更) -->
+            <div id="detail-panel" class="md:col-span-2 bg-gray-800 rounded-xl shadow-2xl px-4 pb-4 md:px-6 md:pb-6">
+                <div class="flex justify-between items-center mb-4 border-b border-gray-700 pb-2 sticky top-0 bg-gray-800 z-10">
+                    <h2 id="detail-panel-title" class="text-xl font-bold text-white">地震詳細</h2>
+                    <!-- 観測点 / 市町村 切替スイッチをこちらに移動 -->
+                    <div class="flex items-center justify-end">
+                        <span id="label-municipality" class="text-sm font-bold text-blue-400 mr-2 transition-colors duration-200">市区町村別</span>
+                        <label for="toggle-mode" class="flex items-center cursor-pointer" title="表示する地域の粒度を「市区町村別」と「観測点別」で切り替えます">
+                            <div class="relative">
+                                <input type="checkbox" id="toggle-mode" class="sr-only">
+                                <div class="toggle-bg w-12 h-6 rounded-full shadow-inner transition-colors duration-200"></div>
+                                <div class="dot absolute left-1 top-1 w-4 h-4 rounded-full shadow transition-transform duration-200"></div>
+                            </div>
+                        </label>
+                        <span id="label-point" class="text-sm text-gray-400 font-medium ml-2 transition-colors duration-200">観測点別</span>
+                    </div>
+                </div>
+
+                <div id="detail-content">
+                    <div class="text-center p-8 text-gray-400">
+                        <svg class="w-12 h-12 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4h18M3 8h18m-6 4h6m-6 4h6M3 12h2M3 16h2"></path></svg>
+                        <p>左側のリストから地震を選択してください。</p>
+                    </div>
+                </div>
+            </div>
+            
+        </div>
+    </div>
+    
+    <!-- === 新規追加: 配信画面用の固定震度表示バー === -->
+    <div id="fixed-shindo-bar" class="fixed bottom-0 left-0 right-0 shadow-2xl z-50 h-32 p-2">
+        <div class="flex h-full items-center justify-between">
+ 
+            <!-- 左: ステータス/切り替えボタン (背景色設定用のラッパーを追加) -->
+            <div id="shindo-status-wrapper" class="h-full flex items-center flex-shrink-0 pl-2 relative">
+                <div class="flex items-end space-x-4">
+                    <div class="flex flex-col space-y-1">
+                        <!-- 自動ページ送りコントロール -->
+                        <div id="autoplay-controls" class="flex items-center space-x-1" style="display: none;">
+                            <div class="flex items-center space-x-1">
+                                <input type="number" id="autoplay-duration" value="10" min="1" class="autoplay-input w-12 text-center text-sm p-1">
+                                <span class="text-xs text-gray-400">秒</span>
+                            </div>
+                            <div class="flex items-center space-x-1">
+                                <select id="autoplay-loops" class="autoplay-input text-sm p-1">
+                                    <!-- ループ回数オプションはJSで生成 -->
+                                </select>
+                                <span class="text-xs text-gray-400">回</span>
+                            </div>
+                            <button id="kana-db-button" class="p-1 text-gray-400 hover:text-white transition" title="手動ふりがな辞書を編集します">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg>
+                            </button>
+                            <button id="shortcut-settings-button" class="p-1 text-gray-400 hover:text-white transition" title="再生/停止のショートカットキーを設定します">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
+                            </button>
+                        </div>
+
+                        <!-- ナビゲーションボタン -->
+                        <div id="shindo-nav" class="flex items-center justify-between" style="display: none;">
+                            <div class="flex items-center space-x-1">
+                                <button id="shindo-prev" class="text-white hover:text-blue-300 transition p-1 rounded-full bg-gray-700 hover:bg-gray-600 disabled:opacity-30 disabled:cursor-not-allowed" title="前のページへ">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+                                </button>
+                                <span id="shindo-page-info" class="text-sm text-gray-400 font-mono w-20 text-center"></span>
+                                <button id="shindo-next" class="text-white hover:text-blue-300 transition p-1 rounded-full bg-gray-700 hover:bg-gray-600 disabled:opacity-30 disabled:cursor-not-allowed" title="次のページへ">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                                </button>
+                            </div>
+                            <button id="autoplay-toggle" class="text-white hover:text-blue-300 transition p-1 rounded-full bg-gray-700 hover:bg-gray-600" title="自動ページ送りを再生/停止">
+                                <!-- 再生アイコン -->
+                                <svg id="play-icon" class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z"></path></svg>
+                                <!-- 停止アイコン -->
+                                <svg id="pause-icon" class="w-5 h-5 hidden" fill="currentColor" viewBox="0 0 20 20"><path d="M5 5h10v10H5z"></path></svg>
+                            </button>
+                        </div>
+    
+                        <!-- トランジション設定 -->
+                        <div id="transition-controls" class="flex items-center space-x-2" style="display: none;" title="ページの切り替え効果を選択します">
+                            <select id="transition-effect" class="autoplay-input text-sm p-1">
+                                <option value="cut" selected>カット</option>
+                                <option value="slide">スライド</option>                            </select>
+                            <!-- 表示リセットボタンをトランジション設定の隣に移動 -->
+                            <button id="reset-display-button" class="bg-red-900 hover:bg-red-800 text-white font-semibold py-1 px-4 rounded-lg shadow transition duration-150 text-sm" style="display: none;" title="表示をリセットします">
+                                リセット
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 右: コンテンツ表示エリア（グリーンバック） -->
+            <div id="content-wrapper" class="flex-grow min-w-0 h-full ml-1.5">
+                <!-- アニメーション用のインナーラッパーを追加 -->
+                <div id="animation-wrapper" class="flex items-center w-full h-full">
+                    <!-- 震度バッジをこちらに移動 -->
+                    <span id="current-shindo-label" class="shindo-badge bg-gray-600 text-white text-3xl h-14 flex items-center justify-center flex-shrink-0 ml-1.5">選択なし</span>
+                    
+                    <!-- テキスト表示エリア -->
+                    <div id="shindo-content" class="flex-grow min-w-0 h-full overflow-hidden ml-2">
+                        <div id="content-line-1" class="text-sm font-medium text-gray-300 truncate text-edge">地震を選択してください。</div>
+                        <div id="content-line-2" class="text-xs text-gray-400 hidden"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- === 固定震度表示バー 終了 === -->
+
+    <!-- ショートカット設定モーダル -->
+    <div id="shortcut-modal" class="fixed inset-0 bg-black bg-opacity-75 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-gray-800 p-6 rounded-lg shadow-xl w-full max-w-md relative">
+            <h3 class="text-xl font-bold mb-6">設定</h3>
+            <div class="space-y-6">
+                <div>
+                    <label for="shortcut-modal-input" class="block text-sm font-medium text-gray-300 mb-1">再生/停止ショートカット</label>
+                    <p class="text-xs text-gray-400 mb-2">下の入力欄を選択し、設定したいキーの組み合わせを押してください</p>
+                    <input type="text" id="shortcut-modal-input" readonly class="w-full p-2 border rounded-md text-center text-lg font-mono">
+                </div>
+                <div>
+                    <label for="eew-sound-toggle" class="flex items-center cursor-pointer mt-4">
+                        <input type="checkbox" id="eew-sound-toggle" class="form-checkbox h-5 w-5 text-blue-600 rounded bg-gray-700 border-gray-600 focus:ring-blue-500">
+                        <span class="ml-3 text-gray-300">緊急地震速報(EEW)受信時に通知音を再生する</span>
+                    </label>
+                </div>
+                <div>
+                    <label for="loop-min-shindo-select" class="block text-sm font-medium text-gray-300 mb-1">情報画面に表示する最低震度</label>
+                    <select id="loop-min-shindo-select" class="w-full p-2 border rounded-md text-white" style="background-color: #1f2937; border-color: #4b5563;">
+                        <option value="10">震度1以上</option>
+                        <option value="20">震度2以上</option>
+                        <option value="30" selected>震度3以上</option>
+                        <option value="40">震度4以上</option>
+                        <option value="45">震度5弱以上</option>
+                        <option value="50">震度5強以上</option>
+                        <option value="55">震度6弱以上</option>
+                        <option value="60">震度6強以上</option>
+                        <option value="70">震度7</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="list-min-shindo-select" class="block text-sm font-medium text-gray-300 mb-1">地震一覧のフィルタ（最大震度）</label>
+                    <select id="list-min-shindo-select" class="w-full p-2 border rounded-md text-white" style="background-color: #1f2937; border-color: #4b5563;">
+                        <option value="10">最大震度1以上</option>
+                        <option value="20">最大震度2以上</option>
+                        <option value="30" selected>最大震度3以上</option>
+                        <option value="40">最大震度4以上</option>
+                        <option value="45">最大震度5弱以上</option>
+                        <option value="50">最大震度5強以上</option>
+                        <option value="55">最大震度6弱以上</option>
+                        <option value="60">最大震度6強以上</option>
+                        <option value="70">最大震度7</option>
+                    </select>
+                </div>
+            </div>
+            <div class="flex justify-end mt-6 space-x-3">
+                <button id="shortcut-modal-close" class="bg-gray-600 hover:bg-gray-700 text-white font-semibold py-2 px-4 rounded-lg transition">
+                    キャンセル
+                </button>
+                <button id="shortcut-modal-save" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition">
+                    保存
+                </button>
+            </div>
+            <button id="shortcut-modal-close-x" class="absolute top-3 right-3 text-gray-400 hover:text-white">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+        </div>
+    </div>
+
+    <!-- ふりがな辞書管理モーダル -->
+    <div id="kana-db-modal" class="fixed inset-0 bg-black bg-opacity-75 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-gray-800 p-6 rounded-lg shadow-xl w-full max-w-2xl relative flex flex-col" style="max-height: 90vh;">
+            <h3 class="text-xl font-bold mb-4 flex-shrink-0">手動ふりがな辞書</h3>
+            
+            <!-- 登録済みリスト -->
+            <div id="manual-kana-list-wrapper" class="flex-grow overflow-y-auto bg-gray-900/50 p-3 rounded-md border border-gray-700 mb-4">
+                <!-- JSでリストが生成される -->
+                <p id="no-manual-kana-message" class="text-gray-400 text-center">手動登録されたデータはありません。</p>
+            </div>
+
+            <!-- 新規追加フォーム -->
+            <div class="flex-shrink-0 space-y-3">
+                <h4 class="text-lg font-semibold">新規追加・編集</h4>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
+                    <div class="md:col-span-2">
+                        <label for="new-kana-key" class="block text-sm font-medium text-gray-300 mb-1">市区町村名 (例: 福島県_伊達市)</label>
+                        <input type="text" id="new-kana-key" placeholder="都道府県名_市区町村名" class="w-full p-2 border rounded-md font-mono bg-gray-700 text-white border-gray-600">
+                    </div>
+                    <div>
+                        <label for="new-kana-value" class="block text-sm font-medium text-gray-300 mb-1">ふりがな (ひらがな)</label>
+                        <input type="text" id="new-kana-value" placeholder="だてし" class="w-full p-2 border rounded-md font-mono bg-gray-700 text-white border-gray-600">
+                    </div>
+                </div>
+                <button id="add-kana-button" class="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-lg transition">追加 / 更新</button>
+            </div>
+
+            <div class="flex justify-between items-center mt-6 flex-shrink-0">
+                <div class="flex flex-col space-y-2">
+                    <button id="export-kana-button" class="bg-gray-600 hover:bg-gray-700 text-white font-semibold py-2 px-4 rounded-lg transition">手動ふりがな辞書をエクスポート</button>
+                    <input type="file" id="import-kana-file-input" class="hidden" accept=".json">
+                    <button id="import-kana-button" class="bg-gray-600 hover:bg-gray-700 text-white font-semibold py-2 px-4 rounded-lg transition">手動ふりがな辞書をインポート</button>
+                    <!-- (既存の「手動辞書をエクスポート」ボタンの近くに追加することを推奨します) -->
+                    <button id="export-jma-kana-button" class="px-4 py-2 bg-teal-600 text-white text-sm font-medium rounded-md hover:bg-teal-700 transition-colors">気象庁自治体辞書を出力</button>
+                </div>
+                <button id="kana-db-modal-close" class="bg-gray-600 hover:bg-gray-700 text-white font-semibold py-2 px-4 rounded-lg transition">キャンセル</button>
+                <button id="kana-db-modal-save" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition">保存して閉じる</button>
+         </div>
+    </div>
+
+    <!-- 外部JavaScriptファイルの読み込み -->
+    <script src="script.js"></script>
+</body>
+</html>

@@ -1,0 +1,284 @@
+/* カスタムスタイル */
+/* ダークモード基本設定 */
+body { 
+    font-family: 'Inter', sans-serif; 
+    background-color: #1f2937; /* Gray-800 */
+    color: #f3f4f6; /* Gray-100 */
+}
+
+/* 震度バッジの色定義 (変更なし) */
+.shindo-7 { background-color: #6a0dad; color: white; }
+.shindo-6-plus { background-color: #cd1616; color: white; }
+.shindo-6-minus { background-color: #ef4444; color: white; }
+.shindo-5-plus { background-color: #e36105; color: white; }
+.shindo-5-minus { background-color: #faa615; color: black; } 
+.shindo-4 { background-color: #e4d907; color: rgb(0, 0, 0); } /* 変更前の色：#10b981 */
+.shindo-3 { background-color: #2563eb; color: white; } /* 震度3のバッジカラー */
+.shindo-2 { background-color: #009fdd; color: white; } 
+.shindo-1 { background-color: #c2e7ff; color: rgb(0, 0, 0); } 
+
+
+.shindo-badge {
+    font-family: 'BIZ UDPGothic', sans-serif;
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    border-radius: 9999px;
+    font-weight: 700;
+    min-width: 9rem; /* 4文字のテキストが収まる幅に調整 */
+    text-align: center;
+}
+
+/* 固定バー内のバッジにのみエッジとシャドウを適用 */
+#fixed-shindo-bar .shindo-badge {
+    border: 1px solid rgb(79, 79, 79);
+    box-shadow: 0 4px 4px rgb(30, 30, 30);
+}
+
+/* 左右分割レイアウトの高さ設定とスクロールを管理するコンテナ */
+@media (min-width: 768px) {
+    /* 画面全体の高さから、上部要素（タイトル、説明、パディング）と固定フッター（h-16 + p-4）の高さを引いた残り */
+    /* 固定フッターの高さを h-20 (5rem) に変更したため、計算を更新 */
+    .full-height-panel-wrapper {
+        height: calc(100vh - 18rem); /* 17rem -> 18rem (h-32対応) */
+    }
+    /* リストと詳細パネルの高さを親に合わせる */
+    #list-panel, #detail-panel {
+        height: 100%;
+    }
+    /* リストパネルの右側の境界線（縦の区切り線）をダークモード用に調整 */
+    #list-panel {
+        border-right: 1px solid #374151; /* Gray-700 */
+    }
+}
+
+/* リストと詳細パネルは常にスクロール可能にしておく */
+#list-panel, #detail-panel {
+    overflow-y: auto;
+}
+
+/* トグルスイッチのスタイル */
+#toggle-mode:checked + .toggle-bg {
+    background-color: #60a5fa; /* blue-400 */
+}
+#toggle-mode:checked + .toggle-bg ~ .dot {
+    transform: translateX(24px); 
+}
+.toggle-bg {
+    background-color: #4b5563; /* Gray-600 */
+}
+.dot {
+    background-color: #d1d5db; /* Gray-300 */
+}
+
+/* リストアイテムの選択状態をダークモード用に調整 */
+.earthquake-card.selected {
+    background-color: #1e3a8a; /* blue-900 */
+    border-left: 4px solid #60a5fa; /* blue-400 */
+}
+
+/* --- 市区町村名内の改行を防ぐカスタムスタイル --- */
+.city-list-no-break {
+    /* CJKの単語区切りを尊重し、単語内改行を防ぐ */
+    word-break: keep-all; 
+    /* 行が単語内改行を避けても長すぎる場合は最終的に強制的に改行する */
+    overflow-wrap: break-word; 
+}
+
+/* --- 固定フッターのカスタムスタイル --- */
+#fixed-shindo-bar {
+    /* 配信画面を想定した固定配置と配色 */
+    /* background-color: #0b111a; */ /* 背景色は子要素で個別に設定 */
+    border-top: 4px solid #3b82f6; /* Blue-500 */
+    color: #f3f4f6;
+}
+
+/* 固定バーの左側（操作パネル）の背景色 */
+#shindo-status-wrapper {
+    background-color: #0b111a; /* 元のバーの背景色 */
+    padding-right: 0.75rem; /* 右側に少し余白を追加 */
+    border-top-right-radius: 0.5rem; /* 角を丸めて自然に見せる */
+    border-bottom-right-radius: 0.5rem;
+}
+
+/* 自動送り機能の入力欄のスタイル */
+.autoplay-input {
+    background-color: #374151; /* Gray-700 */
+    border: 1px solid #4b5563; /* Gray-600 */
+    border-radius: 0.375rem;
+}
+
+#shindo-content {
+    /* flex-growコンテナ内で2行のテキストを管理 */
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    height: 100%;
+}
+
+/* 右側のコンテンツエリア（バッジ＋テキスト）のラッパー */
+#content-wrapper {
+    background-color: transparent; /* 背景色を透明に変更  #00ff00 クロマキーグリーン */
+    overflow: hidden; /* スライドするコンテンツをはみ出させない */
+    display: flex;
+    align-items: center;
+}
+
+/* 固定バー内のテキスト表示エリアのスタイル */
+#content-line-1 {
+    /* 変更: 省略表示をやめ、単純な折り返し表示にする */
+    white-space: normal; /* テキストの折り返しを許可 */
+    line-height: 1.4; /* 行の高さを調整 */
+    max-height: 2.8em; /* line-height * 2行分 */
+    overflow: hidden; /* はみ出した部分は隠す（JSでページ分割するため、基本的にはみ出さない） */
+}
+
+/* テキストに黒い縁取りを追加するクラス */
+.text-edge {
+    /* 影を複数重ねて、滑らかな縁取りとドロップシャドウを作成 */
+    text-shadow:
+        -2px -2px 5px #000, 2px -2px 5px #000, -2px 2px 5px #000, 2px 2px 5px #000, /* 4隅の太い影 */
+        -2px 0 3px #000, 2px 0 3px #000, 0 -2px 3px #000, 0 2px 3px #000,       /* 上下左右の太い影 */
+        0 5px 4px rgba(0,0,0,1); /* ドロップシャドウ */
+}
+
+/* --- スライドアニメーション --- */
+@keyframes slide-out-to-left {
+    from { transform: translateX(0); opacity: 1; }
+    to { transform: translateX(-50%); opacity: 0; }
+}
+@keyframes slide-in-from-right {
+    from { transform: translateX(50%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+}
+@keyframes slide-out-to-right {
+    from { transform: translateX(0); opacity: 1; }
+    to { transform: translateX(50%); opacity: 0; }
+}
+@keyframes slide-in-from-left {
+    from { transform: translateX(-50%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+}
+
+.slide-out-left {
+    animation: slide-out-to-left 0.25s ease-out forwards;
+}
+.slide-in-right {
+    animation: slide-in-from-right 0.25s ease-in forwards;
+}
+.slide-out-right {
+    animation: slide-out-to-right 0.25s ease-out forwards;
+}
+.slide-in-left {
+    animation: slide-in-from-left 0.25s ease-in forwards;
+}
+
+/* --- 津波情報バッジ --- */
+.tsunami-badge {
+    display: inline-block;
+    padding: 0.15rem 0.75rem; /* テキストを大きくするため、上下の余白を少し減らす */
+    border-radius: 0.375rem; /* 6px */
+    font-size: 1rem; /* 16px (text-base) に変更 */
+    font-weight: 700;
+}
+.tsunami-warning {
+    background-color: #f97316; /* orange-500 */
+    color: white;
+}
+.tsunami-none {
+    /* 「概況」バッジのスタイルに合わせる */
+    font-family: 'BIZ UDPGothic', sans-serif;
+    background-color: #6b7280; /* gray-500 */
+    color: white;
+    min-width: 9rem;
+    text-align: center;
+    border-radius: 9999px; /* 左右が円形になるように変更 */
+}
+.tsunami-major-warning {
+    background-color: #6a0dad; /* purple-800 */
+    color: white;
+}
+.tsunami-warning-detailed { /* tsunami-warning と区別 */
+    background-color: #dc2626; /* red-600 */
+    color: white;
+}
+.tsunami-advisory {
+    background-color: #eab308; /* yellow-500 */
+    color: black;
+}
+.tsunami-checking {
+    background-color: #3b82f6; /* blue-500 */
+    color: white;
+}
+.tsunami-observed {
+    /* 津波観測中用の新しいスタイル */
+    background-color: #9333ea; /* purple-600 */
+    color: white;
+}
+
+
+/* 固定フッターの津波警報バッジ用のスタイル */
+#fixed-shindo-bar .tsunami-telop-badge {
+    min-width: 10rem; /* 5文字分の幅を確保 (text-3xlを想定) */
+    border-radius: 0; /* 角丸をなくす */
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+    font-size: 1.5rem; /* text-2xl 相当 */
+}
+
+/* --- ショートカット設定モーダル --- */
+#shortcut-modal-input {
+    background-color: #1f2937; /* gray-800 */
+    border-color: #4b5563; /* gray-600 */
+}
+#shortcut-modal-input:focus {
+    outline: none;
+    border-color: #3b82f6; /* blue-500 */
+    box-shadow: 0 0 0 2px #1e40af; /* blue-800/50 */
+}
+
+/* --- 地震一覧のバッジ専用スタイル --- */
+.list-shindo-badge {
+    font-size: 1rem; /* text-base (16px) */
+}
+.list-tsunami-badge {
+    font-size: 0.5rem; /* 8px */
+    padding-top: 0.2rem;
+    padding-bottom: 0.2rem;
+}
+
+/* 地震一覧の「津波なし」バッジのスタイルを上書き */
+#earthquake-list .tsunami-none {
+    min-width: auto; /* 固定幅を解除 */
+    border-radius: 0.375rem; /* 角丸を他のバッジと合わせる */
+}
+
+/* --- ON AIR バッジのスタイル --- */
+.on-air-badge {
+    position: absolute;
+    top: 0;
+    left: 0;
+    background-color: #dc2626; /* red-600 */
+    color: white;
+    font-size: 0.75rem; /* text-xs */
+    font-weight: 700;
+    padding: 0.125rem 0.5rem; /* py-0.5 px-2 */
+    border-bottom-right-radius: 0.5rem; /* rounded-br-lg */
+    border-top-left-radius: 0.5rem; /* rounded-tl-lg */
+    z-index: 10;
+    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+@keyframes pulse {
+    50% { opacity: 0.7; }
+}
+
+/* ループ再生中にリストがグレーアウトしても、ON AIRバッジは影響を受けないようにする */
+#earthquake-list.opacity-50 .on-air-badge {
+    opacity: 1;
+}
+
+/* ループ再生中にグレーアウトされるカードのスタイル */
+.earthquake-card.grayed-out-card {
+    background-color: rgba(31, 41, 55, 0.5); /* bg-gray-800 の半透明版 */
+    border-color: rgba(75, 85, 99, 0.5); /* border-gray-700 の半透明版 */
+    pointer-events: none; /* クリックイベントを無効化 */
+}

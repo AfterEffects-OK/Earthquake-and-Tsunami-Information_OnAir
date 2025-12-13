@@ -4791,7 +4791,12 @@ const generateAndShowBroadcastScript = (eq) => {
             scriptContent.push(`\n【${view.shindo}】`);
             lastShindo = view.shindo;
         }
-        scriptContent.push(text.replace(/　/g, ' '));
+        // ★★★ マグニチュードの行の文言を変更 ★★★
+        if (text.includes('地震の規模は マグニチュード')) {
+            scriptContent.push(`地震の規模を示す マグニチュードは ${eq.magnitude}と推定されています`);
+        } else {
+            scriptContent.push(text.replace(/　/g, ' '));
+        }
     });
 
     // 2. 震度別市町村リストを取得

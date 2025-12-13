@@ -4774,26 +4774,43 @@ const generateAndShowBroadcastScript = (eq) => {
         return;
     }
 
-    // HTMLタグを除去するヘルパー関数
-    const stripHtml = (html) => {
-        const doc = new DOMParser().parseFromString(html, 'text/html');
-        return doc.body.textContent || "";
+    // line1からふりがな付きのテキストを生成するヘルパー関数
+    const createScriptTextWithRuby = (html) => {
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = html;
+
+        // 概況文（ふりがななし）
+        if (!tempDiv.querySelector('.inline-block')) {
+            return tempDiv.textContent.replace(/　/g, ' ') || "";
+        }
+
+        // 市区町村リスト（ふりがなあり）
+        const cityElements = tempDiv.querySelectorAll('.inline-block.text-center');
+        const citiesWithRuby = Array.from(cityElements).map(cityEl => {
+            const kana = cityEl.querySelector('div').textContent.trim();
+            const name = cityEl.querySelector('span').textContent.trim();
+            return kana ? `<ruby>${name}<rt>${kana}</rt></ruby>` : name;
+        });
+
+        return citiesWithRuby.join(' ');
     };
 
     let lastShindo = '';
     const scriptLines = FIXED_BAR_VIEWS.map(view => {
         let line = '';
-        // 震度階級が変わった時に見出しを追加
         if (view.shindo !== lastShindo) {
             line += `\n【${view.shindo}】\n`;
             lastShindo = view.shindo;
         }
-        // line1の内容を追加（HTMLタグを除去）
-        line += stripHtml(view.line1).replace(/　/g, ' '); // 全角スペースを半角に
+        line += createScriptTextWithRuby(view.line1);
         return line;
     });
 
-    const fullScript = scriptLines.join('\n').replace(/\n{3,}/g, '\n\n'); // 3つ以上の連続改行を2つにまとめる
+    // 震源地のふりがなを取得
+    const epicenterKana = getKana(eq.epicenter) || '';
+    const epicenterHtml = epicenterKana ? `<ruby>${eq.epicenter}<rt>${epicenterKana}</rt></ruby>` : eq.epicenter;
+
+    const fullScript = scriptLines.join('\n').replace(/\n{3,}/g, '\n\n');
 
     // 新しいタブを開いて原稿を表示
     const newWindow = window.open('', '_blank');
@@ -4805,11 +4822,14 @@ const generateAndShowBroadcastScript = (eq) => {
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
             <title>放送原稿 - ${eq.epicenter} (${eq.time})</title>
             <style>
-                body { font-family: 'Meiryo', 'Hiragino Kaku Gothic ProN', sans-serif; line-height: 1.8; padding: 2rem; background-color: #f4f4f4; color: #333; }
-                .container { max-width: 800px; margin: 0 auto; background-color: #fff; padding: 2rem; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+                @page { size: A4 landscape; }
+                body { font-family: 'Meiryo', 'Hiragino Kaku Gothic ProN', sans-serif; line-height: 2.2; padding: 2rem; background-color: #f4f4f4; color: #333; }
+                .container { max-width: 1122px; margin: 0 auto; background-color: #fff; padding: 2rem; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
                 h1 { font-size: 1.8rem; border-bottom: 2px solid #333; padding-bottom: 0.5rem; margin-bottom: 1.5rem; }
-                pre { white-space: pre-wrap; word-wrap: break-word; font-size: 1.2rem; background-color: #fafafa; padding: 1.5rem; border-radius: 6px; border: 1px solid #ddd; }
+                pre { white-space: pre-wrap; word-wrap: break-word; font-size: 1.6rem; font-weight: bold; background-color: #fafafa; padding: 1.5rem; border-radius: 6px; border: 1px solid #ddd; }
                 .info { margin-bottom: 1.5rem; font-size: 0.9rem; color: #666; }
+                ruby { ruby-position: over; }
+                rt { font-size: 0.7em; font-weight: normal; }
                 @media print {
                     body { background-color: #fff; padding: 0; }
                     .container { box-shadow: none; border: none; }
@@ -4820,11 +4840,11 @@ const generateAndShowBroadcastScript = (eq) => {
             <div class="container">
                 <h1>放送原稿</h1>
                 <div class="info">
-                    <strong>地震:</strong> ${eq.epicenter}<br>
+                    <strong>地震:</strong> ${epicenterHtml}<br>
                     <strong>発生日時:</strong> ${eq.time}<br>
                     <strong>最大震度:</strong> ${eq.maxShindoLabel}
                 </div>
-                <pre>${fullScript}</pre>
+                <pre>${fullScript.replace(new RegExp(eq.epicenter, 'g'), epicenterHtml)}</pre>
             </div>
         </body>
         </html>

@@ -4774,43 +4774,68 @@ const generateAndShowBroadcastScript = (eq) => {
         return;
     }
 
-    // line1からふりがな付きのテキストを生成するヘルパー関数
-    const createScriptTextWithRuby = (html) => {
-        const tempDiv = document.createElement('div');
-        tempDiv.innerHTML = html;
-
-        // 概況文（ふりがななし）
-        if (!tempDiv.querySelector('.inline-block')) {
-            return tempDiv.textContent.replace(/　/g, ' ') || "";
-        }
-
-        // 市区町村リスト（ふりがなあり）
-        const cityElements = tempDiv.querySelectorAll('.inline-block.text-center');
-        const citiesWithRuby = Array.from(cityElements).map(cityEl => {
-            const kana = cityEl.querySelector('div').textContent.trim();
-            const name = cityEl.querySelector('span').textContent.trim();
-            return kana ? `<ruby>${name}<rt>${kana}</rt></ruby>` : name;
-        });
-
-        return citiesWithRuby.join(' ');
-    };
-
     let lastShindo = '';
-    const scriptLines = FIXED_BAR_VIEWS.map(view => {
-        let line = '';
+    let scriptContent = [];
+
+    // 1. 概況・津波情報を取得
+    const summaryViews = FIXED_BAR_VIEWS.filter(v => v.type === 'summary' || v.shindo === '津波観測中');
+    summaryViews.forEach(view => {
+        // HTMLタグを除去してテキストのみ取得
+        const doc = new DOMParser().parseFromString(view.line1, 'text/html');
+        const text = doc.body.textContent || "";
+        
+        // 「各地の震度は〜」は原稿に含めない
+        if (text.includes('各地の震度は次のとおりです')) return;
+
         if (view.shindo !== lastShindo) {
-            line += `\n【${view.shindo}】\n`;
+            scriptContent.push(`\n【${view.shindo}】`);
             lastShindo = view.shindo;
         }
-        line += createScriptTextWithRuby(view.line1);
-        return line;
+        scriptContent.push(text.replace(/　/g, ' '));
+    });
+
+    // 2. 震度別市町村リストを取得
+    const shindoGroups = groupPointsByShindoAndMode(eq.points, 'municipality', loopPlaybackMinScale);
+    shindoGroups.forEach(group => {
+        if (group.shindo !== lastShindo) {
+            scriptContent.push(`\n【${group.shindo}】`);
+            lastShindo = group.shindo;
+        }
+        const citiesWithRuby = group.cities.map(cityKey => {
+            // cityKey は "都道府県名_市区町村名"
+            const name = cityKey.split('_')[1] || cityKey;
+            const kana = getKana(cityKey);
+            return kana ? `<ruby>${name}<rt>${kana}</rt></ruby>` : name;
+        }).join(' ');
+
+        scriptContent.push(citiesWithRuby);
     });
 
     // 震源地のふりがなを取得
     const epicenterKana = getKana(eq.epicenter) || '';
     const epicenterHtml = epicenterKana ? `<ruby>${eq.epicenter}<rt>${epicenterKana}</rt></ruby>` : eq.epicenter;
 
-    const fullScript = scriptLines.join('\n').replace(/\n{3,}/g, '\n\n');
+    // 冒頭の地震発生情報をふりがな付きで生成
+    const [datePart, timePart] = eq.time.split(' ');
+    const today = new Date();
+    const eqDate = new Date(datePart);
+    let displayTime;
+    const formattedTimeForTelop = formatTimeForTelop(timePart);
+    if (today.getFullYear() === eqDate.getFullYear() && today.getMonth() === eqDate.getMonth() && today.getDate() === eqDate.getDate()) {
+        displayTime = `${formattedTimeForTelop}ごろ`;
+    } else {
+        const [_, month, day] = datePart.split('/');
+        displayTime = `${parseInt(month, 10)}月${parseInt(day, 10)}日 ${formattedTimeForTelop}ごろ`;
+    }
+    const firstLine = `${displayTime} ${epicenterHtml}を震源とする 最大${eq.maxShindoLabel}の地震がありました`;
+    
+    // 最初の行を差し替え
+    const firstSummaryIndex = scriptContent.findIndex(line => line.includes('を震源とする'));
+    if (firstSummaryIndex !== -1) {
+        scriptContent[firstSummaryIndex] = firstLine;
+    }
+
+    const fullScript = scriptContent.join('\n').replace(/\n{2,}/g, '\n\n');
 
     // 新しいタブを開いて原稿を表示
     const newWindow = window.open('', '_blank');
@@ -4844,7 +4869,7 @@ const generateAndShowBroadcastScript = (eq) => {
                     <strong>発生日時:</strong> ${eq.time}<br>
                     <strong>最大震度:</strong> ${eq.maxShindoLabel}
                 </div>
-                <pre>${fullScript.replace(new RegExp(eq.epicenter, 'g'), epicenterHtml)}</pre>
+                <pre>${fullScript}</pre>
             </div>
         </body>
         </html>

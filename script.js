@@ -4805,8 +4805,8 @@ const generateAndShowBroadcastScript = (eq) => {
             // cityKey は "都道府県名_市区町村名"
             const name = cityKey.split('_')[1] || cityKey;
             const kana = getKana(cityKey);
-            return kana ? `<ruby>${name}<rt>${kana}</rt></ruby>` : name;
-        }).join(' ');
+            return kana ? `<span class="city-name"><ruby>${name}<rt>${kana}</rt></ruby></span>` : `<span class="city-name">${name}</span>`;
+        }).join('　　'); // スペースを全角2つに変更
 
         scriptContent.push(citiesWithRuby);
     });
@@ -4855,6 +4855,7 @@ const generateAndShowBroadcastScript = (eq) => {
                 .info { margin-bottom: 1.5rem; font-size: 0.9rem; color: #666; }
                 ruby { ruby-position: over; }
                 rt { font-size: 0.7em; font-weight: normal; }
+                .city-name { display: inline-block; } /* 市町村名が途中で改行されるのを防ぐ */
                 @media print {
                     body { background-color: #fff; padding: 0; }
                     .container { box-shadow: none; border: none; }

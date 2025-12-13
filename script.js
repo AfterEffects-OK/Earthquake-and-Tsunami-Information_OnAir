@@ -4856,9 +4856,17 @@ const generateAndShowBroadcastScript = (eq) => {
                 ruby { ruby-position: over; }
                 rt { font-size: 0.7em; font-weight: normal; }
                 .city-name { display: inline-block; } /* 市町村名が途中で改行されるのを防ぐ */
+                #back-to-top {
+                    display: none; position: fixed; bottom: 30px; right: 30px; z-index: 99;
+                    border: none; outline: none; background-color: rgba(0, 0, 0, 0.5); color: white;
+                    cursor: pointer; padding: 12px 16px; border-radius: 50%; font-size: 18px;
+                    transition: background-color 0.3s, opacity 0.3s;
+                }
+                #back-to-top:hover { background-color: rgba(0, 0, 0, 0.7); }
                 @media print {
                     body { background-color: #fff; padding: 0; }
                     .container { box-shadow: none; border: none; }
+                    #back-to-top { display: none !important; } /* 印刷時には非表示 */
                 }
             </style>
         </head>
@@ -4872,6 +4880,22 @@ const generateAndShowBroadcastScript = (eq) => {
                 </div>
                 <pre>${fullScript}</pre>
             </div>
+
+            <button id="back-to-top" title="ページのトップに戻る">▲</button>
+
+            <script>
+                const topButton = document.getElementById('back-to-top');
+                window.onscroll = function() {
+                    if (document.body.scrollTop > 100 || document.documentElement.scrollTop > 100) {
+                        topButton.style.display = "block";
+                    } else {
+                        topButton.style.display = "none";
+                    }
+                };
+                topButton.addEventListener('click', function() {
+                    window.scrollTo({top: 0, behavior: 'smooth'});
+                });
+            <\/script>
         </body>
         </html>
     `);

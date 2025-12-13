@@ -4849,7 +4849,7 @@ const generateAndShowBroadcastScript = (eq) => {
             <style>
                 @page { size: A4 landscape; }
                 body { font-family: 'Meiryo', 'Hiragino Kaku Gothic ProN', sans-serif; padding: 2rem; background-color: #f4f4f4; color: #333; }
-                .container { max-width: 1122px; margin: 0 auto; background-color: #fff; padding: 2rem; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+                .container { max-width: 1122px; margin: 0 auto; background-color: #fff; padding: 2rem; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); position: relative; }
                 h1 { font-size: 1.8rem; border-bottom: 2px solid #333; padding-bottom: 0.5rem; margin-bottom: 1.5rem; }
                 pre { white-space: pre-wrap; word-wrap: break-word; font-size: 1.6rem; font-weight: bold; background-color: #fafafa; padding: 1.5rem; border-radius: 6px; border: 1px solid #ddd; line-height: 2.8; }
                 .info { margin-bottom: 1.5rem; font-size: 0.9rem; color: #666; }
@@ -4857,12 +4857,12 @@ const generateAndShowBroadcastScript = (eq) => {
                 rt { font-size: 0.7em; font-weight: normal; }
                 .city-name { display: inline-block; } /* 市町村名が途中で改行されるのを防ぐ */
                 #back-to-top {
-                    display: none; position: fixed; bottom: 30px; right: 30px; z-index: 99;
-                    border: none; outline: none; background-color: rgba(0, 0, 0, 0.5); color: white;
-                    cursor: pointer; padding: 12px 16px; border-radius: 50%; font-size: 18px;
-                    transition: background-color 0.3s, opacity 0.3s;
+                    position: absolute; bottom: 1rem; right: 1rem;
+                    border: 1px solid #ccc; outline: none; background-color: #f0f0f0; color: #333;
+                    cursor: pointer; padding: 0.5rem 1rem; border-radius: 6px; font-size: 0.9rem;
+                    transition: background-color 0.3s;
                 }
-                #back-to-top:hover { background-color: rgba(0, 0, 0, 0.7); }
+                #back-to-top:hover { background-color: #e0e0e0; }
                 @media print {
                     body { background-color: #fff; padding: 0; }
                     .container { box-shadow: none; border: none; }
@@ -4879,19 +4879,14 @@ const generateAndShowBroadcastScript = (eq) => {
                     <strong>最大震度:</strong> ${eq.maxShindoLabel}
                 </div>
                 <pre>${fullScript}</pre>
+                <button id="back-to-top" title="ページのトップに戻る">▲ ページのトップへ</button>
             </div>
-
-            <button id="back-to-top" title="ページのトップに戻る">▲</button>
 
             <script>
                 (function() {
                     const doc = document;
                     const topButton = doc.getElementById('back-to-top');
                     if (!topButton) return;
-
-                    doc.addEventListener('scroll', function() {
-                        topButton.style.display = (doc.body.scrollTop > 100 || doc.documentElement.scrollTop > 100) ? 'block' : 'none';
-                    });
 
                     topButton.addEventListener('click', function() {
                         doc.documentElement.scrollTo({top: 0, behavior: 'smooth'});

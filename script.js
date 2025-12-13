@@ -4848,10 +4848,10 @@ const generateAndShowBroadcastScript = (eq) => {
             <title>放送原稿 - ${eq.epicenter} (${eq.time})</title>
             <style>
                 @page { size: A4 landscape; }
-                body { font-family: 'Meiryo', 'Hiragino Kaku Gothic ProN', sans-serif; line-height: 2.2; padding: 2rem; background-color: #f4f4f4; color: #333; }
+                body { font-family: 'Meiryo', 'Hiragino Kaku Gothic ProN', sans-serif; padding: 2rem; background-color: #f4f4f4; color: #333; }
                 .container { max-width: 1122px; margin: 0 auto; background-color: #fff; padding: 2rem; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
                 h1 { font-size: 1.8rem; border-bottom: 2px solid #333; padding-bottom: 0.5rem; margin-bottom: 1.5rem; }
-                pre { white-space: pre-wrap; word-wrap: break-word; font-size: 1.6rem; font-weight: bold; background-color: #fafafa; padding: 1.5rem; border-radius: 6px; border: 1px solid #ddd; }
+                pre { white-space: pre-wrap; word-wrap: break-word; font-size: 1.6rem; font-weight: bold; background-color: #fafafa; padding: 1.5rem; border-radius: 6px; border: 1px solid #ddd; line-height: 2.8; }
                 .info { margin-bottom: 1.5rem; font-size: 0.9rem; color: #666; }
                 ruby { ruby-position: over; }
                 rt { font-size: 0.7em; font-weight: normal; }

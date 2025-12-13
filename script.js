@@ -4884,17 +4884,19 @@ const generateAndShowBroadcastScript = (eq) => {
             <button id="back-to-top" title="ページのトップに戻る">▲</button>
 
             <script>
-                const topButton = document.getElementById('back-to-top');
-                window.onscroll = function() {
-                    if (document.body.scrollTop > 100 || document.documentElement.scrollTop > 100) {
-                        topButton.style.display = "block";
-                    } else {
-                        topButton.style.display = "none";
-                    }
-                };
-                topButton.addEventListener('click', function() {
-                    window.scrollTo({top: 0, behavior: 'smooth'});
-                });
+                (function() {
+                    const doc = document;
+                    const topButton = doc.getElementById('back-to-top');
+                    if (!topButton) return;
+
+                    doc.addEventListener('scroll', function() {
+                        topButton.style.display = (doc.body.scrollTop > 100 || doc.documentElement.scrollTop > 100) ? 'block' : 'none';
+                    });
+
+                    topButton.addEventListener('click', function() {
+                        doc.documentElement.scrollTo({top: 0, behavior: 'smooth'});
+                    });
+                })();
             <\/script>
         </body>
         </html>

@@ -4871,11 +4871,35 @@ const generateAndShowBroadcastScript = (eq) => {
                     cursor: pointer; padding: 0.5rem 1rem; border-radius: 6px; font-size: 1rem;
                     transition: background-color 0.3s;
                 }
+                #invert-colors-button {
+                    position: fixed; top: 1rem; right: 1rem; z-index: 101;
+                    border: 1px solid #ccc; outline: none; background-color: #f0f0f0; color: #333;
+                    cursor: pointer; padding: 0.5rem 1rem; border-radius: 6px; font-size: 0.9rem;
+                    transition: background-color 0.3s, color 0.3s, border-color 0.3s;
+                }
+                #invert-colors-button:hover { background-color: #e0e0e0; }
+
+                /* Inverted (dark mode) styles */
+                body.inverted { background-color: #1a1a1a; color: #e0e0e0; }
+                body.inverted .container { background-color: #2d2d2d; box-shadow: 0 2px 10px rgba(255,255,255,0.05); }
+                body.inverted h1 { border-bottom-color: #e0e0e0; }
+                body.inverted pre { background-color: #222; border-color: #444; color: #f5f5f5; }
+                body.inverted .info { color: #bbb; }
+                body.inverted ruby rt { color: #00e0e0; } /* Invert kana color for visibility */
+                body.inverted #back-to-top {
+                    background-color: #444; color: #e0e0e0; border-color: #666;
+                }
+                body.inverted #back-to-top:hover { background-color: #555; }
+                body.inverted #invert-colors-button {
+                    background-color: #444; color: #e0e0e0; border-color: #666;
+                }
+                body.inverted #invert-colors-button:hover { background-color: #555; }
+
                 #back-to-top:hover { background-color: #e0e0e0; }
                 @media print {
                     body { background-color: #fff; padding: 0; }
                     .container { box-shadow: none; border: none; }
-                    #back-to-top { display: none !important; } /* 印刷時には非表示 */
+                    #back-to-top, #invert-colors-button { display: none !important; } /* 印刷時には非表示 */
                 }
             </style>
         </head>
@@ -4890,21 +4914,30 @@ const generateAndShowBroadcastScript = (eq) => {
                 <pre>${fullScript}</pre>
             </div>
 
+            <button id="invert-colors-button" title="白黒反転">白黒反転</button>
             <button id="back-to-top" title="ページのトップに戻る">▲ ページのトップへ</button>
 
             <script>
                 (function() {
                     const doc = document;
                     const topButton = doc.getElementById('back-to-top');
-                    if (!topButton) return;
+                    const invertButton = doc.getElementById('invert-colors-button');
+
+                    if (topButton) {
+                        doc.addEventListener('scroll', function() {
+                            topButton.style.display = (doc.body.scrollTop > 200 || doc.documentElement.scrollTop > 200) ? 'block' : 'none';
+                        });
+                        
+                        topButton.addEventListener('click', function() {
+                            doc.documentElement.scrollTo({top: 0, behavior: 'smooth'});
+                        });
+                    }
                     
-                    doc.addEventListener('scroll', function() {
-                        topButton.style.display = (doc.body.scrollTop > 200 || doc.documentElement.scrollTop > 200) ? 'block' : 'none';
-                    });
-                    
-                    topButton.addEventListener('click', function() {
-                        doc.documentElement.scrollTo({top: 0, behavior: 'smooth'});
-                    });
+                    if (invertButton) {
+                        invertButton.addEventListener('click', function() {
+                            doc.body.classList.toggle('inverted');
+                        });
+                    }
                 })();
             <\/script>
         </body>

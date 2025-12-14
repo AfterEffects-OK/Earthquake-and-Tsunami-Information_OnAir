@@ -4796,12 +4796,25 @@ const generateAndShowBroadcastScript = (eq) => {
 
     // 2. 震度別市町村リストを取得
     const shindoGroups = groupPointsByShindoAndMode(eq.points, 'municipality', loopPlaybackMinScale);
+    const processedCities = new Set(); // 表示済みの市区町村を記録するSet
+
     shindoGroups.forEach(group => {
+        // ★★★ 修正: この震度階級で表示すべき市区町村（未表示のもののみ）をフィルタリング ★★★
+        const citiesToShow = group.cities.filter(cityKey => !processedCities.has(cityKey));
+
+        // 表示する市区町村がなければ、この震度階級の処理をスキップ
+        if (citiesToShow.length === 0) {
+            return;
+        }
+
+        // 震度階級の見出しを追加
         if (group.shindo !== lastShindo) {
             scriptContent.push(`\n【${group.shindo}】`);
             lastShindo = group.shindo;
         }
-        const citiesWithRuby = group.cities.map(cityKey => {
+
+        const citiesWithRuby = citiesToShow.map(cityKey => {
+            processedCities.add(cityKey); // 表示済みとして記録
             // cityKey は "都道府県名_市区町村名"
             const name = cityKey.split('_')[1] || cityKey;
             const kana = getKana(cityKey);

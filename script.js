@@ -4840,11 +4840,15 @@ const generateAndShowBroadcastScript = (eq) => {
         const [_, month, day] = datePart.split('/');
         displayTime = `${parseInt(month, 10)}月${parseInt(day, 10)}日 ${formattedTimeForTelop}ごろ`;
     }
-    
+
+    // 震源の深さのテキストを生成
+    const depthText = eq.depth === 0 ? 'ごく浅い' : (eq.depth > 0 ? `およそ${eq.depth}キロ` : '不明');
+
     // ★★★ 原稿冒頭の構成を変更 ★★★
     const newFirstLines = [
         `${displayTime} 最大${eq.maxShindoLabel}の地震がありました`,
         `震源地は ${epicenterHtml}`,
+        `震源の深さは ${depthText}`,
         `地震の規模を示す マグニチュードは ${eq.magnitude}と推定されています`
     ];
 
@@ -4871,8 +4875,8 @@ const generateAndShowBroadcastScript = (eq) => {
                 @page { size: A4 landscape; }
                 body { font-family: 'Meiryo', 'Hiragino Kaku Gothic ProN', sans-serif; padding: 2rem; background-color: #f4f4f4; color: #333; }
                 .container { max-width: 1122px; margin: 0 auto; background-color: #fff; padding: 2rem; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-                h1 { font-size: 1.8rem; border-bottom: 2px solid #333; padding-bottom: 0.5rem; margin-bottom: 1.5rem; }
-                pre { white-space: pre-wrap; word-wrap: break-word; font-size: 1.6rem; font-weight: bold; background-color: #fafafa; padding: 1.5rem; border-radius: 6px; border: 1px solid #ddd; line-height: 2.8; }
+                h1 { font-size: 2.4rem; border-bottom: 2px solid #333; padding-bottom: 0.5rem; margin-bottom: 1.5rem; }
+                pre { white-space: pre-wrap; word-wrap: break-word; font-size: 2.2rem; font-weight: bold; background-color: #fafafa; padding: 1.5rem; border-radius: 6px; border: 1px solid #ddd; line-height: 2.8; }
                 .info { margin-bottom: 1.5rem; font-size: 0.9rem; color: #666; }
                 ruby { ruby-position: over; }
                 rt { font-size: 0.7em; font-weight: normal; }

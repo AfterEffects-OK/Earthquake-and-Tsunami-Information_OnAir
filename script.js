@@ -82,6 +82,7 @@ let loopPlaybackMinScale = 30; // デフォルトは震度3以上
 // --- EEW通知音設定用のグローバル変数 ---
 let playEewSound = true; // デフォルトはON
 let eewAudioObject = null; // プリロード用のAudioオブジェクト
+let currentEewOnEnded = null; // 現在再生中のEEW音声のendedリスナーを保持
 // --- 連続EEW対応用のグローバル変数 ---
 let eewQueue = []; // 表示すべきEEW情報を保持するキュー
 let eewDisplayIntervalId = null; // EEWを10秒ごとに切り替えるためのタイマーID
@@ -373,6 +374,13 @@ const handleEew = (eewData) => {
 
     // 設定が有効な場合、通知音を再生
     if (playEewSound && eewAudioObject) {
+        // 連続して速報が来た場合、直ちに停止してリセットする
+        eewAudioObject.pause();
+        if (currentEewOnEnded) {
+            eewAudioObject.removeEventListener('ended', currentEewOnEnded);
+            currentEewOnEnded = null;
+        }
+
         let playCount = 0;
         const maxPlayCount = 2; // 再生回数を2回に設定
 
@@ -389,10 +397,11 @@ const handleEew = (eewData) => {
                 playSound(); // 次の再生を実行
             } else {
                 eewAudioObject.removeEventListener('ended', onSoundEnded); // 2回再生が終わったらリスナーを削除
+                currentEewOnEnded = null;
             }
         };
 
-        eewAudioObject.removeEventListener('ended', onSoundEnded); // 念のため既存のリスナーを削除
+        currentEewOnEnded = onSoundEnded;
         eewAudioObject.addEventListener('ended', onSoundEnded);
         playSound(); // 1回目の再生を開始
     }
@@ -3896,11 +3905,15 @@ const updateFixedShindoBar = (eq) => {
         document.getElementById('reset-display-button').style.display = 'block';
         document.getElementById('transition-controls').style.display = 'flex';
         shindoNav.style.display = 'flex';
+        document.getElementById('earthquake-list').style.paddingBottom = '80px';
+        document.getElementById('detail-content').style.paddingBottom = '80px';
     } else {
         autoplayControls.style.display = 'none';
         document.getElementById('reset-display-button').style.display = 'none';
         document.getElementById('transition-controls').style.display = 'none';
         shindoNav.style.display = 'none';
+        document.getElementById('earthquake-list').style.paddingBottom = '0';
+        document.getElementById('detail-content').style.paddingBottom = '0';
     }
 
     // 表示エリアをクリア
@@ -3931,6 +3944,8 @@ const displayInitialFixedBarState = () => {
     transitionControls.style.display = 'none';
     resetButton.style.display = 'none';
     pageInfo.textContent = '';
+    document.getElementById('earthquake-list').style.paddingBottom = '0';
+    document.getElementById('detail-content').style.paddingBottom = '0';
 }
 
 /**

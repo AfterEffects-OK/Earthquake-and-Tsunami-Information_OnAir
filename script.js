@@ -3940,10 +3940,13 @@ const updateFixedShindoBar = (eq) => {
             renderContent(FIXED_BAR_VIEWS[0]);
         }
 
-        // 固定枠の高さ分（約260px）を表示エリアの高さから引くことで、エリアを完全に分割する
-        const footerHeight = '260px';
-        document.getElementById('earthquake-list').style.height = `calc(100% - ${footerHeight})`;
-        document.getElementById('detail-content').style.height = `calc(100% - ${footerHeight})`;
+        // 固定枠の高さ分（約270px）を表示エリアの高さから引くことで、エリアを完全に分割する
+        // 上部の余白を削除したため、100vh (画面全体の高さ) を基準に計算する
+        const footerHeight = '270px';
+        document.getElementById('earthquake-list').style.height = `calc(100vh - ${footerHeight})`;
+        document.getElementById('detail-content').style.height = `calc(100vh - ${footerHeight})`;
+        document.getElementById('earthquake-list').style.overflowY = 'auto';
+        document.getElementById('detail-content').style.overflowY = 'auto';
     } else {
         autoplayControls.style.display = 'none';
         document.getElementById('reset-display-button').style.display = 'none';
@@ -4644,7 +4647,9 @@ const startAutoplay = async () => {
 
                 // 指定秒数後に表示をクリアする
                 setTimeout(() => {
-                    document.getElementById('content-line-1').textContent = '';
+                    // テキストとページ情報をクリアし、何も表示されていない状態にする
+                    document.getElementById('content-line-1').innerHTML = '&nbsp;'; // レイアウトが崩れないよう空白を挿入
+                    document.getElementById('content-line-2').textContent = '';
                     document.getElementById('current-shindo-label').classList.add('hidden');
                     pauseAutoplay(true); // 完全に停止状態に戻す
                 }, duration);

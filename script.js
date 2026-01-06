@@ -3579,20 +3579,6 @@ const displayEarthquakes = (processedEarthquakes) => {
     const cardsHtml = processedEarthquakes.map(renderEarthquakeListItem).join('');
     listContainer.innerHTML = cardsHtml;
 
-    // ★★★ 修正: 固定バーが表示されている場合、リストが再描画されるとスペーサーが消えてしまうため、ここで再追加する ★★★
-    const shindoNav = document.getElementById('shindo-nav');
-    if (shindoNav && shindoNav.style.display === 'flex') {
-        const spacerHeight = '240px'; // updateFixedShindoBarと同じ高さ
-        let listSpacer = document.getElementById('list-spacer');
-        if (!listSpacer) {
-            listSpacer = document.createElement('div');
-            listSpacer.id = 'list-spacer';
-            listSpacer.style.flexShrink = '0';
-            listContainer.appendChild(listSpacer);
-        }
-        listSpacer.style.height = spacerHeight;
-    }
-
     // イベントリスナーの設定
     listContainer.querySelectorAll('.earthquake-card').forEach(card => {
         
@@ -3924,44 +3910,21 @@ const updateFixedShindoBar = (eq) => {
             renderContent(FIXED_BAR_VIEWS[0]);
         }
 
-        // --- スペーサー要素による領域確保 ---
-        // 以前のpadding/margin/bottomによる調整がCSS構造に干渉され機能しないため、
-        // スクロールコンテナの末尾に物理的なスペーサーを配置し、その高さを変更する最も確実な方法に切り替えます。
-        const spacerHeight = '240px'; // 固定枠の高さ(約140px) + 十分な余白
-
-        // 地震一覧へのスペーサー追加/更新
-        const listContainer = document.getElementById('earthquake-list');
-        let listSpacer = document.getElementById('list-spacer');
-        if (!listSpacer) {
-            listSpacer = document.createElement('div');
-            listSpacer.id = 'list-spacer';
-            listSpacer.style.flexShrink = '0'; // Flexコンテナ内でも縮まないようにする
-            listContainer.appendChild(listSpacer);
-        }
-        listSpacer.style.height = spacerHeight;
-
-        // 詳細表示へのスペーサー追加
-        const detailContainer = document.getElementById('detail-content');
-        let detailSpacer = document.getElementById('detail-spacer');
-        if (!detailSpacer) {
-            detailSpacer = document.createElement('div');
-            detailSpacer.id = 'detail-spacer';
-            detailSpacer.style.flexShrink = '0';
-            detailContainer.appendChild(detailSpacer);
-        }
-        detailSpacer.style.height = spacerHeight;
+        // 固定枠の高さ分（約260px）を表示エリアの高さから引くことで、エリアを完全に分割する
+        const footerHeight = '260px';
+        document.getElementById('earthquake-list').style.height = `calc(100% - ${footerHeight})`;
+        document.getElementById('detail-content').style.height = `calc(100% - ${footerHeight})`;
     } else {
         autoplayControls.style.display = 'none';
         document.getElementById('reset-display-button').style.display = 'none';
         document.getElementById('transition-controls').style.display = 'none';
         shindoNav.style.display = 'none';
         
-        // スペーサーを削除するのではなく、高さを0にして非表示にする
-        const listSpacer = document.getElementById('list-spacer');
-        if (listSpacer) listSpacer.style.height = '0px';
-        
-        const detailSpacer = document.getElementById('detail-spacer');
-        if (detailSpacer) detailSpacer.style.height = '0px';
+        // 高さをリセット
+        document.getElementById('earthquake-list').style.height = '';
+        document.getElementById('detail-content').style.height = '';
+        document.getElementById('earthquake-list').style.overflowY = '';
+        document.getElementById('detail-content').style.overflowY = '';
     }
 
     // 表示エリアのクリア処理を削除（内容を表示したままにして高さを維持する）
@@ -4793,13 +4756,13 @@ const setupDummyDataToggle = () => {
             toggleButton.classList.remove('bg-yellow-600', 'hover:bg-yellow-700');
             toggleButton.classList.add('bg-red-600', 'hover:bg-red-700');
             warningDiv.classList.remove('hidden');
-            body.classList.add('pt-1'); // 警告バーの高さ分paddingを追加
+            // body.classList.add('pt-1'); // 上部の余白を削除するためコメントアウト
         } else {
             toggleButton.textContent = '訓練モードへ';
             toggleButton.classList.remove('bg-red-600', 'hover:bg-red-700');
             toggleButton.classList.add('bg-yellow-600', 'hover:bg-yellow-700');
             warningDiv.classList.add('hidden');
-            body.classList.remove('pt-1');
+            // body.classList.remove('pt-1'); // 上部の余白を削除するためコメントアウト
         }
 
         refreshData(); // モードを切り替えたらデータを再読み込み
@@ -5033,6 +4996,9 @@ const generateAndShowBroadcastScript = (eq) => {
 // --- 初期化 ---
 
 window.onload = async () => {
+    // ★★★ アプリ上部の余白を強制的に削除して全体を上に詰める ★★★
+    document.body.style.paddingTop = '0px';
+
     // ★★★ 最初に読み仮名辞書を生成する ★★★
     await buildKanaDictionary();
     preloadEewSound(); // EEW音声ファイルをプリロード

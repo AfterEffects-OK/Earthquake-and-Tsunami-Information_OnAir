@@ -3905,21 +3905,29 @@ const updateFixedShindoBar = (eq) => {
         document.getElementById('reset-display-button').style.display = 'block';
         document.getElementById('transition-controls').style.display = 'flex';
         shindoNav.style.display = 'flex';
-        document.getElementById('earthquake-list').style.paddingBottom = '80px';
-        document.getElementById('detail-content').style.paddingBottom = '80px';
+
+        // 1ページ目の内容を一時的に描画して、実際の高さを確定させる
+        if (FIXED_BAR_VIEWS.length > 0) {
+            renderContent(FIXED_BAR_VIEWS[0]);
+        }
+
+        // 高さ計算が不安定なため、計算ロジックを廃止し固定値でマージンを設定
+        // 固定枠の高さ(約120px)に対して十分な余裕を持たせて 220px とする
+        const bottomSpace = '220px';
+        document.getElementById('earthquake-list').style.marginBottom = bottomSpace;
+        document.getElementById('detail-content').style.marginBottom = bottomSpace;
     } else {
         autoplayControls.style.display = 'none';
         document.getElementById('reset-display-button').style.display = 'none';
         document.getElementById('transition-controls').style.display = 'none';
         shindoNav.style.display = 'none';
+        document.getElementById('earthquake-list').style.marginBottom = '0';
+        document.getElementById('detail-content').style.marginBottom = '0';
         document.getElementById('earthquake-list').style.paddingBottom = '0';
         document.getElementById('detail-content').style.paddingBottom = '0';
     }
 
-    // 表示エリアをクリア
-    line1.textContent = '';
-    document.getElementById('content-line-2').textContent = '';
-    currentShindoLabel.classList.add('hidden');
+    // 表示エリアのクリア処理を削除（内容を表示したままにして高さを維持する）
 };
 
 /**
@@ -3944,6 +3952,8 @@ const displayInitialFixedBarState = () => {
     transitionControls.style.display = 'none';
     resetButton.style.display = 'none';
     pageInfo.textContent = '';
+    document.getElementById('earthquake-list').style.marginBottom = '0';
+    document.getElementById('detail-content').style.marginBottom = '0';
     document.getElementById('earthquake-list').style.paddingBottom = '0';
     document.getElementById('detail-content').style.paddingBottom = '0';
 }

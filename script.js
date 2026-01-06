@@ -51,6 +51,8 @@ let DISPLAY_MODE = 'municipality'; // 初期値を市区町村別に変更
 let LAST_FETCH_TIME = null;
 // 訓練モードの状態を管理するグローバル変数
 let USE_DUMMY_DATA = false;
+// 自動再生済みの地震IDを保持するセット
+let PLAYED_EARTHQUAKE_IDS = new Set();
 
 // --- 固定バー用のグローバル変数 ---
 // 概況ビュー(インデックス0) + 震度別地域ビュー の全てのビューを格納
@@ -346,6 +348,9 @@ const handleEew = (eewData) => {
     // エラー防止: 必要なDOM要素と、eewDataにearthquakeオブジェクトが存在することを確認
     if (!eewData.earthquake) return;
 
+    // IDの取得 (APIのid または issue.event_id を使用)
+    const dataId = eewData.id || eewData.issue?.event_id;
+
     // エラー防止: maxScale, hypocenter, magnitude が存在しない場合に備える
     const maxScaleValue = eewData.earthquake.maxScale;
     const maxScale = (maxScaleValue !== undefined && maxScaleValue !== null) ? scaleToShindo(maxScaleValue).label : '不明';
@@ -363,7 +368,7 @@ const handleEew = (eewData) => {
 
     // --- 連続EEW対応: キューに情報を追加 ---
     // 既に同じIDのEEWがキューにあれば追加しない
-    if (eewQueue.some(e => e.id === eewData.id)) {
+    if (dataId && eewQueue.some(e => e.id === dataId)) {
         return;
     }
 
@@ -373,7 +378,19 @@ const handleEew = (eewData) => {
     }
 
     // 設定が有効な場合、通知音を再生
-    if (playEewSound && eewAudioObject) {
+    if (playEewSound) {
+        // 音声オブジェクトにエラーがある場合は再生成する
+        if (eewAudioObject && eewAudioObject.error) {
+            console.warn('EEW音声オブジェクトにエラーが検出されたため、再生成します。', eewAudioObject.error);
+            eewAudioObject = null;
+        }
+
+        // 音声オブジェクトが未生成の場合は生成を試みる
+        if (!eewAudioObject) {
+            preloadEewSound();
+        }
+
+        if (eewAudioObject) {
         // 連続して速報が来た場合、直ちに停止してリセットする
         eewAudioObject.pause();
         if (currentEewOnEnded) {
@@ -386,8 +403,13 @@ const handleEew = (eewData) => {
 
         const playSound = () => {
             eewAudioObject.currentTime = 0; // 再生位置を最初に戻す
-            eewAudioObject.play().catch(error => {
+            eewAudioObject.play().then(() => {
+                console.log('EEW通知音を再生しました。');
+            }).catch(error => {
                 console.warn(`EEW通知音の再生に失敗しました (${playCount + 1}回目):`, error);
+                if (error.name === 'NotAllowedError') {
+                    console.error('【重要】ブラウザの自動再生ポリシーにより音声がブロックされました。ページをクリックして操作を行ってください。');
+                }
             });
         };
 
@@ -404,9 +426,12 @@ const handleEew = (eewData) => {
         currentEewOnEnded = onSoundEnded;
         eewAudioObject.addEventListener('ended', onSoundEnded);
         playSound(); // 1回目の再生を開始
+        }
+    } else {
+        console.log('EEW通知音は設定により無効化されています。');
     }
 
-    eewQueue.push({ id: eewData.id, text: alertText, data: eewData });
+    eewQueue.push({ id: dataId, text: alertText, data: eewData });
     // 新しいEEWが追加されるたびに表示サイクルを開始（またはタイマーをリセット）する
     startEewDisplayCycle();
 };
@@ -3660,13 +3685,18 @@ const refreshData = async () => {
     if (hasChanged && !isAutoplaying) {
         // 新しい地震がリストの先頭に来るように、displayEarthquakesがソートしていることを前提とする
         if (earthquakes.length > 0) {
-            isWaitingForAutoplay = true; // 自動再生待機フラグを立てる
-            // 詳細パネルと固定バーのビューは更新するが、表示はさせない
-            const eqData = earthquakes[0];
-            updateFixedShindoBar(eqData);
-            updateNavControls({}, null); // isWaitingForAutoplayフラグを元に「地震 受信中」を表示させる
-            console.log('新しい地震データを検知しました。3秒後に自動再生を開始します。');
-            setTimeout(startAutoplay, 3000); // 3秒待ってから自動再生を開始
+            const latestEq = earthquakes[0];
+            // 既に自動再生済みのIDでない場合のみ再生する
+            if (!PLAYED_EARTHQUAKE_IDS.has(latestEq.id)) {
+                isWaitingForAutoplay = true; // 自動再生待機フラグを立てる
+                // 詳細パネルと固定バーのビューは更新するが、表示はさせない
+                updateFixedShindoBar(latestEq);
+                updateNavControls({}, null); // isWaitingForAutoplayフラグを元に「地震 受信中」を表示させる
+                console.log('新しい地震データを検知しました。3秒後に自動再生を開始します。');
+                
+                PLAYED_EARTHQUAKE_IDS.add(latestEq.id); // 再生済みIDとして登録
+                setTimeout(startAutoplay, 3000); // 3秒待ってから自動再生を開始
+            }
         }
     }
 
@@ -3911,7 +3941,7 @@ const updateFixedShindoBar = (eq) => {
         }
 
         // 固定枠の高さ分（約260px）を表示エリアの高さから引くことで、エリアを完全に分割する
-        const footerHeight = '300px';
+        const footerHeight = '260px';
         document.getElementById('earthquake-list').style.height = `calc(100% - ${footerHeight})`;
         document.getElementById('detail-content').style.height = `calc(100% - ${footerHeight})`;
     } else {
@@ -4752,6 +4782,10 @@ const setupDummyDataToggle = () => {
         USE_DUMMY_DATA = !USE_DUMMY_DATA; // モードを反転
 
         if (USE_DUMMY_DATA) {
+            // 訓練モード開始時にEEWの状態をリセットする
+            // これにより、同じダミーデータでも再度通知音を確認できるようになります
+            stopEewDisplayCycle();
+
             toggleButton.textContent = '通常モードへ';
             toggleButton.classList.remove('bg-yellow-600', 'hover:bg-yellow-700');
             toggleButton.classList.add('bg-red-600', 'hover:bg-red-700');
@@ -4788,8 +4822,12 @@ const loadManualKanaDict = () => {
  * EEW音声ファイルをプリロードする
  */
 const preloadEewSound = () => {
-    eewAudioObject = new Audio('https://github.com/AfterEffects-OK/Earthquake-and-Tsunami-Information_OnAir/raw/refs/heads/main/sound/EEW_Woman_2.aac');
+    eewAudioObject = new Audio('https://raw.githubusercontent.com/AfterEffects-OK/Earthquake-and-Tsunami-Information_OnAir/main/sound/EEW_Woman_2.aac');
     eewAudioObject.preload = 'auto'; // ブラウザに音声のプリロードを指示
+    // エラーハンドリング追加
+    eewAudioObject.addEventListener('error', (e) => {
+        console.error('EEW音声ファイルの読み込みに失敗しました:', e);
+    });
     eewAudioObject.load(); // 明示的にロードを開始
     console.log('EEW音声ファイルのプリロードを開始しました。');
 };
@@ -5054,4 +5092,3 @@ window.onload = async () => {
     // 定期的な自動更新を設定
     refreshIntervalId = setInterval(refreshData, CONFIG.REFRESH_INTERVAL_MS);
 };
-

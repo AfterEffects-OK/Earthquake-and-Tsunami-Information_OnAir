@@ -14,6 +14,28 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- 外部CSS・JSファイルの読み込み -->
     <link rel="stylesheet" href="style.css">
+    <style>
+        .intensity-num {
+            font-family: "Arial Black", "Impact", sans-serif;
+            line-height: 0.8;
+            letter-spacing: -0.05em;
+        }
+        @keyframes flash {
+            0%, 100% { border-color: #fbbf24; box-shadow: 0 0 20px rgba(251, 191, 36, 0.6); }
+            50% { border-color: #ffffff; box-shadow: 0 0 40px rgba(255, 255, 255, 0.8); }
+        }
+        @keyframes slideIn {
+            from { transform: translateX(30px); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        .text-outline-heavy {
+            text-shadow: -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 2px 2px 0 #000;
+        }
+        @keyframes progress {
+            from { width: 0%; }
+            to { width: 100%; }
+        }
+    </style>
 </head>
 <!-- 画面下部の固定バー（h-20）のスペースを確保するために pb-20 に変更 -->
 <body class="p-4 md:p-8 min-h-screen pb-32">
@@ -24,13 +46,15 @@
 
     <div>
         <div class="flex justify-between items-center mb-2">
-            <!-- タイトルを最大震度3以上に更新 -->
-            <h1 class="text-3xl font-extrabold text-white">地震情報ライブモニター</h1>
-            <!-- 緊急地震速報(EEW)アラート表示エリア -->
-            <div id="eew-alert-container" class="hidden items-center p-3 rounded-lg bg-red-800 border-2 border-red-500">
-                <svg id="eew-icon" class="w-8 h-8 text-red-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
-                <span id="eew-alert-text" class="text-xl font-bold text-white"></span>
+            <div>
+                <!-- タイトルを最大震度3以上に更新 -->
+                <h1 class="text-3xl font-extrabold text-white">地震情報ライブモニター</h1>
+                <div id="eew-status-display" class="mt-2"></div>
             </div>
+            <!-- 緊急地震速報(EEW)アラート表示エリア -->
+            <!-- 旧コンテナは互換性のために非表示で残す -->
+            <div id="eew-alert-container" class="hidden"></div>
+            <div id="eew-display-root" class="relative z-50 min-h-[180px] flex items-center"></div>
         </div>
          <!-- 説明文を最大震度3以上に更新 -->
         <!-- メインコンテンツ (左右分割コンテナ) - md:grid-cols-3 に変更して 1:2 分割 (1/3 + 2/3) -->
@@ -285,5 +309,264 @@
 
     <!-- 外部JavaScriptファイルの読み込み -->
     <script src="script.js"></script>
+
+    <!-- 新しい緊急地震速報ロジック -->
+    <script>
+        (function() {
+            // --- 定数・データ ---
+            const MOCK_REAL_DATA = {
+                "id": "695c62ffe88ee598246be8a1",
+                "areas": [
+                    {"name": "鳥取県西部", "scaleFrom": 50},
+                    {"name": "島根県東部", "scaleFrom": 45},
+                    {"name": "広島県北部", "scaleFrom": 40},
+                    {"name": "岡山県北部", "scaleFrom": 40},
+                    {"name": "鳥取県中部", "scaleFrom": 40},
+                    {"name": "広島県南東部", "scaleFrom": 40},
+                    {"name": "鳥取県東部", "scaleFrom": 40},
+                    {"name": "岡山県南部", "scaleFrom": 30}
+                ],
+                "earthquake": { "hypocenter": { "name": "島根県東部" } },
+                "issue": { "serial": "1", "time": "2026/01/06 10:18:55" }
+            };
+
+            const fontStack = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Meiryo", sans-serif';
+
+            // --- ステート管理 ---
+            const state = {
+                eewList: [],
+                currentIndex: 0,
+                timer: null,
+                autoClearTimer: null
+            };
+
+            // --- ヘルパー関数 ---
+            const getIntensityParts = (scale) => {
+                if (scale >= 65) return { num: "7", suffix: "" };
+                if (scale >= 60) return { num: "6", suffix: "強" };
+                if (scale >= 55) return { num: "6", suffix: "弱" };
+                if (scale >= 50) return { num: "5", suffix: "強" };
+                if (scale >= 45) return { num: "5", suffix: "弱" };
+                if (scale >= 40) return { num: "4", suffix: "" };
+                if (scale >= 30) return { num: "3", suffix: "" };
+                if (scale >= 20) return { num: "2", suffix: "" };
+                if (scale >= 10) return { num: "1", suffix: "" };
+                return { num: "-", suffix: "" };
+            };
+
+            const getAreaInfo = (name) => {
+                const mapping = [
+                    { region: "北海道", prefs: ["北海道"] },
+                    { region: "東北地方", prefs: ["青森", "岩手", "宮城", "秋田", "山形", "福島"] },
+                    { region: "関東地方", prefs: ["茨城", "栃木", "群馬", "埼玉", "千葉", "東京", "神奈川"] },
+                    { region: "中部地方", prefs: ["新潟", "富山", "石川", "福井", "山梨", "長野", "岐阜", "静岡", "愛知"] },
+                    { region: "近畿地方", prefs: ["三重", "滋賀", "京都", "大阪", "兵庫", "奈良", "和歌山"] },
+                    { region: "中国地方", prefs: ["鳥取", "島根", "岡山", "広島", "山口"] },
+                    { region: "四国地方", prefs: ["徳島", "香川", "愛媛", "高知"] },
+                    { region: "九州・沖縄", prefs: ["福岡", "佐賀", "長崎", "熊本", "大分", "宮崎", "鹿児島", "沖縄"] }
+                ];
+
+                for (const group of mapping) {
+                    const matchedPref = group.prefs.find(p => name.includes(p));
+                    if (matchedPref) {
+                        const formattedPref = matchedPref === "北海道" ? "北海道" : (matchedPref + (matchedPref.length > 2 ? "" : "県"));
+                        return { pref: formattedPref, region: group.region };
+                    }
+                }
+                return { pref: name, region: "その他" };
+            };
+
+            const groupAreas = (areas) => {
+                if (!areas || areas.length === 0) return [];
+
+                const prefMap = {}; 
+                areas.forEach(area => {
+                    const { pref, region } = getAreaInfo(area.name);
+                    if (!prefMap[pref]) {
+                        prefMap[pref] = { name: pref, scaleFrom: area.scaleFrom, region: region };
+                    } else {
+                        prefMap[pref].scaleFrom = Math.max(prefMap[pref].scaleFrom, area.scaleFrom);
+                    }
+                });
+
+                let displayList = Object.values(prefMap);
+
+                if (displayList.length >= 6) {
+                    const regionMap = {};
+                    displayList.forEach(item => {
+                        if (!regionMap[item.region]) {
+                            regionMap[item.region] = { name: item.region, scaleFrom: item.scaleFrom, count: 1, firstPref: item.name };
+                        } else {
+                            regionMap[item.region].scaleFrom = Math.max(regionMap[item.region].scaleFrom, item.scaleFrom);
+                            regionMap[item.region].count++;
+                        }
+                    });
+
+                    displayList = Object.values(regionMap).map(region => {
+                        return {
+                            name: region.count > 1 ? region.name : region.firstPref,
+                            scaleFrom: region.scaleFrom
+                        };
+                    });
+                }
+
+                return displayList.sort((a, b) => b.scaleFrom - a.scaleFrom);
+            };
+
+            // --- レンダリング ---
+            const render = () => {
+                const root = document.getElementById('eew-display-root');
+                const statusRoot = document.getElementById('eew-status-display');
+                if (!root) return;
+
+                const currentEew = state.eewList[state.currentIndex];
+                
+                // テストボタンのHTML
+                const testButtonsHtml = `
+                    <div class="absolute top-4 right-4 flex gap-2 pointer-events-auto opacity-0 hover:opacity-100 transition-opacity z-50">
+                        <button onclick="window.EEWLogic.triggerTest()" class="bg-slate-800 text-[10px] px-2 py-1 rounded font-bold text-white border border-gray-600 hover:bg-slate-700">TEST REAL DATA</button>
+                        <button onclick="window.EEWLogic.clearTest()" class="bg-slate-800 text-[10px] px-2 py-1 rounded font-bold text-white border border-gray-600 hover:bg-slate-700">CLEAR</button>
+                    </div>
+                `;
+
+                let contentHtml = '';
+                let statusHtml = '';
+
+                if (currentEew) {
+                    const maxScale = Math.max(...currentEew.areas.map(a => a.scaleFrom));
+                    const isAlerting = maxScale >= 45;
+                    const displayAreas = groupAreas(currentEew.areas);
+                    const intensityParts = getIntensityParts(maxScale);
+                    const timeStr = currentEew.issue.time.split(' ')[1].substring(0, 5);
+
+                    // エリアリストの生成
+                    const areasHtml = displayAreas.slice(0, 5).map(area => {
+                        const parts = getIntensityParts(area.scaleFrom);
+                        const colorClass = area.scaleFrom >= 45 ? 'text-red-400' : 'text-yellow-400';
+                        return `
+                            <div class="flex justify-between items-center h-[22px] border-b border-white/5 last:border-0 whitespace-nowrap gap-1">
+                                <span class="text-[1.1rem] font-[900] tracking-tighter truncate flex-1 min-w-0 text-white">${area.name}</span>
+                                <div class="flex items-baseline font-bold intensity-num shrink-0 ${colorClass}">
+                                    <span class="text-xl">${parts.num}</span>
+                                    <span class="text-[15px] ml-0.5">${parts.suffix}</span>
+                                </div>
+                            </div>
+                        `;
+                    }).join('');
+
+                    // プログレスバー
+                    const progressBarHtml = state.eewList.length > 1 ? `
+                        <div class="absolute bottom-0 left-0 h-1.5 bg-white/10 w-full">
+                            <div class="h-full bg-yellow-400 shadow-[0_0_8px_#facc15]" style="width: 100%; animation: progress 5s linear"></div>
+                        </div>
+                    ` : '';
+
+                    contentHtml = `
+                        <div class="mx-auto relative flex items-stretch overflow-hidden rounded-xl border-[4px] shadow-[0_25px_60px_-15px_rgba(0,0,0,0.7)] backdrop-blur-2xl animate-[slideIn_0.3s_ease-out]
+                            ${isAlerting ? 'bg-gradient-to-br from-red-800 via-red-700 to-red-900 border-yellow-400 animate-[flash_0.8s_infinite]' : 'bg-gradient-to-br from-slate-900 via-slate-800 to-slate-950 border-blue-600'}
+                            pointer-events-auto" style="width: 920px; height: 180px;">
+                            
+                            <div class="flex items-center justify-center px-6 py-4 ${isAlerting ? 'bg-white text-red-700' : 'bg-blue-600 text-white'} w-[155px] shrink-0 relative">
+                                <div class="flex items-baseline intensity-num drop-shadow-md">
+                                    <span class="text-[5.5rem] font-bold leading-none">${intensityParts.num}</span>
+                                    <span class="text-[3.0rem] font-black ml-1 leading-none tracking-tighter self-end mb-1">${intensityParts.suffix}</span>
+                                </div>
+                            </div>
+
+                            <div class="flex-1 px-8 py-4 flex flex-col justify-center overflow-hidden border-r border-white/10">
+                                <div class="flex items-center justify-between mb-1 flex-nowrap whitespace-nowrap overflow-hidden">
+                                    <div class="flex items-center gap-3 shrink-0">
+                                        <span class="text-[12px] px-2 py-0.5 rounded font-[900] shadow-md shrink-0 ${isAlerting ? 'bg-yellow-400 text-red-900' : 'bg-blue-500 text-white'}">
+                                            第${currentEew.issue.serial}報 ${isAlerting ? '警報' : '予報'}
+                                        </span>
+                                        <span class="text-[14px] font-bold opacity-90 flex items-center gap-1.5 tabular-nums shrink-0 text-white">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                                            ${timeStr}
+                                        </span>
+                                    </div>
+                                </div>
+                                <div class="flex flex-col">
+                                    <h1 class="text-4xl font-[900] tracking-normal text-outline-heavy mb-1 whitespace-nowrap text-white">緊急地震速報</h1>
+                                    <div class="flex items-center text-yellow-300">
+                                        <h2 class="text-2xl font-[900] truncate tracking-tight drop-shadow-md whitespace-nowrap">強い揺れに警戒してください</h2>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="flex flex-col justify-center px-3 bg-black/40 w-[290px] shrink-0">
+                                <p class="text-[14px] font-[900] opacity-80 mb-1 tracking-[0.1em] text-center whitespace-nowrap text-white">
+                                    ${displayAreas.length < currentEew.areas.length ? '主要な予測エリア' : '主要な予測地域'}
+                                </p>
+                                <div class="flex flex-col">
+                                    <div class="h-[120px] flex flex-col justify-center">
+                                        ${areasHtml}
+                                    </div>
+                                </div>
+                            </div>
+                            ${progressBarHtml}
+                        </div>
+                    `;
+                } else {
+                    // 待機中表示を左側のstatusRootに移動
+                    statusHtml = `
+                        <div class="flex items-center gap-2 text-[10px] font-black bg-black/80 px-4 py-1.5 rounded-full border border-white/10 tracking-[0.15em] shadow-xl whitespace-nowrap text-white opacity-50">
+                            <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse shadow-[0_0_10px_#22c55e]"></div>
+                            EEW MONITORING ACTIVE
+                        </div>
+                    `;
+                }
+
+                root.innerHTML = `<div class="pointer-events-none text-white overflow-hidden" style="font-family: ${fontStack}">${testButtonsHtml}${contentHtml}</div>`;
+                if (statusRoot) {
+                    statusRoot.innerHTML = statusHtml;
+                }
+            };
+
+            // --- 自動消去タイマー ---
+            const resetAutoClearTimer = () => {
+                if (state.autoClearTimer) clearTimeout(state.autoClearTimer);
+                state.autoClearTimer = setTimeout(() => {
+                    state.eewList = [];
+                    state.currentIndex = 0;
+                    render();
+                }, 60000); // 60秒後にクリア
+            };
+
+            // --- 外部公開API ---
+            window.EEWLogic = {
+                triggerTest: () => {
+                    state.eewList = [MOCK_REAL_DATA];
+                    state.currentIndex = 0;
+                    render();
+                    resetAutoClearTimer();
+                },
+                clearTest: () => {
+                    state.eewList = [];
+                    state.currentIndex = 0;
+                    if (state.autoClearTimer) clearTimeout(state.autoClearTimer);
+                    render();
+                },
+                update: (newList) => {
+                    state.eewList = newList;
+                    render();
+                    if (state.eewList.length > 0) {
+                        resetAutoClearTimer();
+                    } else if (state.autoClearTimer) {
+                        clearTimeout(state.autoClearTimer);
+                    }
+                }
+            };
+
+            // --- 初期化 ---
+            setInterval(() => {
+                if (state.eewList.length <= 1) return;
+                state.currentIndex = (state.currentIndex + 1) % state.eewList.length;
+                render();
+            }, 5000);
+
+            // 初回レンダリング
+            render();
+        })();
+    </script>
 </body>
 </html>

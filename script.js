@@ -360,6 +360,17 @@ const handleEew = (eewData) => {
         alertText += ` M${magnitude}`;
     }
 
+    // --- 連続EEW対応: キューに情報を追加 ---
+    // 既に同じIDのEEWがキューにあれば追加しない
+    if (eewQueue.some(e => e.id === eewData.id)) {
+        return;
+    }
+
+    // 新しい表示ロジックにデータを渡す
+    if (window.EEWLogic && typeof window.EEWLogic.update === 'function') {
+        window.EEWLogic.update([eewData]);
+    }
+
     // 設定が有効な場合、通知音を再生
     if (playEewSound && eewAudioObject) {
         let playCount = 0;
@@ -384,12 +395,6 @@ const handleEew = (eewData) => {
         eewAudioObject.removeEventListener('ended', onSoundEnded); // 念のため既存のリスナーを削除
         eewAudioObject.addEventListener('ended', onSoundEnded);
         playSound(); // 1回目の再生を開始
-    }
-
-    // --- 連続EEW対応: キューに情報を追加 ---
-    // 既に同じIDのEEWがキューにあれば追加しない
-    if (eewQueue.some(e => e.id === eewData.id)) {
-        return;
     }
 
     eewQueue.push({ id: eewData.id, text: alertText, data: eewData });
@@ -4758,7 +4763,7 @@ const loadManualKanaDict = () => {
  * EEW音声ファイルをプリロードする
  */
 const preloadEewSound = () => {
-    eewAudioObject = new Audio('https://github.com/AfterEffects-OK/EarthquakeEarlyWarning/raw/refs/heads/main/EEW_Woman_2.aac');
+    eewAudioObject = new Audio('https://github.com/AfterEffects-OK/Earthquake-and-Tsunami-Information_OnAir/raw/refs/heads/main/sound/EEW_Woman_2.aac');
     eewAudioObject.preload = 'auto'; // ブラウザに音声のプリロードを指示
     eewAudioObject.load(); // 明示的にロードを開始
     console.log('EEW音声ファイルのプリロードを開始しました。');

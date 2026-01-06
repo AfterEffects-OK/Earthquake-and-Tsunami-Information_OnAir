@@ -3911,7 +3911,7 @@ const updateFixedShindoBar = (eq) => {
         }
 
         // 固定枠の高さ分（約260px）を表示エリアの高さから引くことで、エリアを完全に分割する
-        const footerHeight = '260px';
+        const footerHeight = '300px';
         document.getElementById('earthquake-list').style.height = `calc(100% - ${footerHeight})`;
         document.getElementById('detail-content').style.height = `calc(100% - ${footerHeight})`;
     } else {
@@ -5054,3 +5054,4 @@ window.onload = async () => {
     // 定期的な自動更新を設定
     refreshIntervalId = setInterval(refreshData, CONFIG.REFRESH_INTERVAL_MS);
 };
+

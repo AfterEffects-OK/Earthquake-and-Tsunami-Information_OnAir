@@ -3579,6 +3579,20 @@ const displayEarthquakes = (processedEarthquakes) => {
     const cardsHtml = processedEarthquakes.map(renderEarthquakeListItem).join('');
     listContainer.innerHTML = cardsHtml;
 
+    // ★★★ 修正: 固定バーが表示されている場合、リストが再描画されるとスペーサーが消えてしまうため、ここで再追加する ★★★
+    const shindoNav = document.getElementById('shindo-nav');
+    if (shindoNav && shindoNav.style.display === 'flex') {
+        const spacerHeight = '240px'; // updateFixedShindoBarと同じ高さ
+        let listSpacer = document.getElementById('list-spacer');
+        if (!listSpacer) {
+            listSpacer = document.createElement('div');
+            listSpacer.id = 'list-spacer';
+            listSpacer.style.flexShrink = '0';
+            listContainer.appendChild(listSpacer);
+        }
+        listSpacer.style.height = spacerHeight;
+    }
+
     // イベントリスナーの設定
     listContainer.querySelectorAll('.earthquake-card').forEach(card => {
         
@@ -3906,25 +3920,48 @@ const updateFixedShindoBar = (eq) => {
         document.getElementById('transition-controls').style.display = 'flex';
         shindoNav.style.display = 'flex';
 
-        // 1ページ目の内容を一時的に描画して、実際の高さを確定させる
         if (FIXED_BAR_VIEWS.length > 0) {
             renderContent(FIXED_BAR_VIEWS[0]);
         }
 
-        // 高さ計算が不安定なため、計算ロジックを廃止し固定値でマージンを設定
-        // 固定枠の高さ(約120px)に対して十分な余裕を持たせて 220px とする
-        const bottomSpace = '220px';
-        document.getElementById('earthquake-list').style.marginBottom = bottomSpace;
-        document.getElementById('detail-content').style.marginBottom = bottomSpace;
+        // --- スペーサー要素による領域確保 ---
+        // 以前のpadding/margin/bottomによる調整がCSS構造に干渉され機能しないため、
+        // スクロールコンテナの末尾に物理的なスペーサーを配置し、その高さを変更する最も確実な方法に切り替えます。
+        const spacerHeight = '240px'; // 固定枠の高さ(約140px) + 十分な余白
+
+        // 地震一覧へのスペーサー追加/更新
+        const listContainer = document.getElementById('earthquake-list');
+        let listSpacer = document.getElementById('list-spacer');
+        if (!listSpacer) {
+            listSpacer = document.createElement('div');
+            listSpacer.id = 'list-spacer';
+            listSpacer.style.flexShrink = '0'; // Flexコンテナ内でも縮まないようにする
+            listContainer.appendChild(listSpacer);
+        }
+        listSpacer.style.height = spacerHeight;
+
+        // 詳細表示へのスペーサー追加
+        const detailContainer = document.getElementById('detail-content');
+        let detailSpacer = document.getElementById('detail-spacer');
+        if (!detailSpacer) {
+            detailSpacer = document.createElement('div');
+            detailSpacer.id = 'detail-spacer';
+            detailSpacer.style.flexShrink = '0';
+            detailContainer.appendChild(detailSpacer);
+        }
+        detailSpacer.style.height = spacerHeight;
     } else {
         autoplayControls.style.display = 'none';
         document.getElementById('reset-display-button').style.display = 'none';
         document.getElementById('transition-controls').style.display = 'none';
         shindoNav.style.display = 'none';
-        document.getElementById('earthquake-list').style.marginBottom = '0';
-        document.getElementById('detail-content').style.marginBottom = '0';
-        document.getElementById('earthquake-list').style.paddingBottom = '0';
-        document.getElementById('detail-content').style.paddingBottom = '0';
+        
+        // スペーサーを削除するのではなく、高さを0にして非表示にする
+        const listSpacer = document.getElementById('list-spacer');
+        if (listSpacer) listSpacer.style.height = '0px';
+        
+        const detailSpacer = document.getElementById('detail-spacer');
+        if (detailSpacer) detailSpacer.style.height = '0px';
     }
 
     // 表示エリアのクリア処理を削除（内容を表示したままにして高さを維持する）
@@ -3952,10 +3989,10 @@ const displayInitialFixedBarState = () => {
     transitionControls.style.display = 'none';
     resetButton.style.display = 'none';
     pageInfo.textContent = '';
-    document.getElementById('earthquake-list').style.marginBottom = '0';
-    document.getElementById('detail-content').style.marginBottom = '0';
-    document.getElementById('earthquake-list').style.paddingBottom = '0';
-    document.getElementById('detail-content').style.paddingBottom = '0';
+    
+    // 高さをリセット
+    document.getElementById('earthquake-list').style.height = '';
+    document.getElementById('detail-content').style.height = '';
 }
 
 /**
@@ -4756,13 +4793,13 @@ const setupDummyDataToggle = () => {
             toggleButton.classList.remove('bg-yellow-600', 'hover:bg-yellow-700');
             toggleButton.classList.add('bg-red-600', 'hover:bg-red-700');
             warningDiv.classList.remove('hidden');
-            body.classList.add('pt-10'); // 警告バーの高さ分paddingを追加
+            body.classList.add('pt-1'); // 警告バーの高さ分paddingを追加
         } else {
             toggleButton.textContent = '訓練モードへ';
             toggleButton.classList.remove('bg-red-600', 'hover:bg-red-700');
             toggleButton.classList.add('bg-yellow-600', 'hover:bg-yellow-700');
             warningDiv.classList.add('hidden');
-            body.classList.remove('pt-10');
+            body.classList.remove('pt-1');
         }
 
         refreshData(); // モードを切り替えたらデータを再読み込み

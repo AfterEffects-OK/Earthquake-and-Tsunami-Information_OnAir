@@ -35,6 +35,10 @@
             from { width: 0%; }
             to { width: 100%; }
         }
+        /* 地震一覧と詳細パネルの高さをテキスト2文字分短くする */
+        #list-panel, #detail-panel {
+            height: calc(100% - 3rem) !important;
+        }
     </style>
 </head>
 <!-- 画面下部の固定バー（h-20）のスペースを確保するために pb-20 に変更 -->

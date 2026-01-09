@@ -44,7 +44,7 @@
 <!-- 画面下部の固定バー（h-20）のスペースを確保するために pb-20 に変更 -->
 <body class="p-4 md:p-8 min-h-screen pb-32">
     <!-- 訓練モード警告表示 -->
-    <div id="dummy-data-warning" class="hidden fixed top-0 left-0 right-0 bg-red-600 text-white text-center p-2 z-50 font-bold shadow-lg">
+    <div id="dummy-data-warning" class="hidden fixed top-0 left-0 w-fit bg-red-600 text-white p-2 z-50 font-bold shadow-lg rounded-br-lg">
         ★★★ 訓練モード有効 ★★★ この画面は訓練用です。配信には使用しないでください。
     </div>
 
@@ -105,7 +105,7 @@
             </div>
 
             <!-- 右パネル: 詳細表示 (2/3 幅に変更) -->
-            <div id="detail-panel" class="md:col-span-2 bg-gray-800 rounded-xl shadow-2xl px-4 pb-4 md:px-6 md:pb-6">
+            <div id="detail-panel" class="md:col-span-2 bg-gray-800 rounded-xl shadow-2xl px-4 pb-2 md:px-6 md:pb-3">
                 <div class="flex justify-between items-center mb-4 border-b border-gray-700 pb-2 sticky top-0 bg-gray-800 z-10">
                     <h2 id="detail-panel-title" class="text-xl font-bold text-white">地震詳細</h2>
                     <!-- 観測点 / 市町村 切替スイッチをこちらに移動 -->

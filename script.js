@@ -3676,28 +3676,35 @@ const refreshData = async () => {
 
     // 2. Fetch and Display
     const earthquakes = await fetchEarthquakeData();
-    displayEarthquakes(earthquakes);
 
     // 3. 地震データに変化があったかチェックし、自動再生を開始
     const idsAfter = earthquakes.map(eq => eq.id).sort();
     const hasChanged = JSON.stringify(idsBefore) !== JSON.stringify(idsAfter);
 
+    let newEarthquakeDetected = false;
+    let latestEq = null;
+
     if (hasChanged && !isAutoplaying) {
         // 新しい地震がリストの先頭に来るように、displayEarthquakesがソートしていることを前提とする
         if (earthquakes.length > 0) {
-            const latestEq = earthquakes[0];
+            latestEq = earthquakes[0];
             // 既に自動再生済みのIDでない場合のみ再生する
             if (!PLAYED_EARTHQUAKE_IDS.has(latestEq.id)) {
                 isWaitingForAutoplay = true; // 自動再生待機フラグを立てる
-                // 詳細パネルと固定バーのビューは更新するが、表示はさせない
-                updateFixedShindoBar(latestEq);
-                updateNavControls({}, null); // isWaitingForAutoplayフラグを元に「地震 受信中」を表示させる
-                console.log('新しい地震データを検知しました。3秒後に自動再生を開始します。');
-                
-                PLAYED_EARTHQUAKE_IDS.add(latestEq.id); // 再生済みIDとして登録
-                setTimeout(startAutoplay, 3000); // 3秒待ってから自動再生を開始
+                newEarthquakeDetected = true;
             }
         }
+    }
+
+    // ★★★ 修正: フラグ設定後に描画を行うことで、updateFixedShindoBar内で確実に非表示処理が効くようにする ★★★
+    displayEarthquakes(earthquakes);
+
+    if (newEarthquakeDetected) {
+        updateNavControls({}, null); // isWaitingForAutoplayフラグを元に「地震 受信中」を表示させる
+        console.log('新しい地震データを検知しました。3秒後に自動再生を開始します。');
+        
+        PLAYED_EARTHQUAKE_IDS.add(latestEq.id); // 再生済みIDとして登録
+        setTimeout(startAutoplay, 3000); // 3秒待ってから自動再生を開始
     }
 
     // 3. API取得に成功し、UIが更新された場合（エラーメッセージが表示されていない場合）のみ、取得日時を更新
@@ -3936,10 +3943,6 @@ const updateFixedShindoBar = (eq) => {
         document.getElementById('transition-controls').style.display = 'flex';
         shindoNav.style.display = 'flex';
 
-        if (FIXED_BAR_VIEWS.length > 0) {
-            renderContent(FIXED_BAR_VIEWS[0]);
-        }
-
         // 固定枠の高さ分（約270px）を表示エリアの高さから引くことで、エリアを完全に分割する
         // 上部の余白を削除したため、100vh (画面全体の高さ) を基準に計算する
         const footerHeight = '270px';
@@ -3960,7 +3963,10 @@ const updateFixedShindoBar = (eq) => {
         document.getElementById('detail-content').style.overflowY = '';
     }
 
-    // 表示エリアのクリア処理を削除（内容を表示したままにして高さを維持する）
+    // 表示エリアをクリア
+    line1.textContent = '';
+    document.getElementById('content-line-2').textContent = '';
+    currentShindoLabel.classList.add('hidden');
 };
 
 /**

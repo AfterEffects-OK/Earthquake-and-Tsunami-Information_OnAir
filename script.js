@@ -53,6 +53,8 @@ let LAST_FETCH_TIME = null;
 let USE_DUMMY_DATA = false;
 // 自動再生済みの地震IDを保持するセット
 let PLAYED_EARTHQUAKE_IDS = new Set();
+// 放送原稿の黒背景設定
+let isScriptDarkTheme = localStorage.getItem('isScriptDarkTheme') === 'true';
 
 // --- 固定バー用のグローバル変数 ---
 // 概況ビュー(インデックス0) + 震度別地域ビュー の全てのビューを格納
@@ -3472,6 +3474,10 @@ const displayEarthquakeDetails = (eq) => {
         <div class="flex items-center justify-between mb-4 gap-4">
             <h3 class="text-2xl font-bold text-white">${eq.epicenter}</h3>
             <div class="flex items-center gap-4 flex-shrink-0">
+                <label class="flex items-center space-x-1 cursor-pointer select-none">
+                    <input type="checkbox" id="script-theme-toggle" class="form-checkbox h-4 w-4 text-blue-600 rounded focus:ring-blue-500 bg-gray-700 border-gray-500" ${isScriptDarkTheme ? 'checked' : ''}>
+                    <span class="text-xs text-gray-300">黒背景</span>
+                </label>
                 <button id="generate-script-button" class="px-3 py-1.5 text-sm font-semibold text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-gray-800">
                     放送原稿を作成
                 </button>
@@ -3569,6 +3575,15 @@ const displayEarthquakeDetails = (eq) => {
     const generateScriptButton = document.getElementById('generate-script-button');
     if (generateScriptButton) {
         generateScriptButton.addEventListener('click', () => generateAndShowBroadcastScript(eq));
+    }
+
+    // --- 放送原稿テーマ設定のイベントリスナー ---
+    const scriptThemeToggle = document.getElementById('script-theme-toggle');
+    if (scriptThemeToggle) {
+        scriptThemeToggle.addEventListener('change', (e) => {
+            isScriptDarkTheme = e.target.checked;
+            localStorage.setItem('isScriptDarkTheme', isScriptDarkTheme);
+        });
     }
 };
 
@@ -4999,7 +5014,7 @@ const generateAndShowBroadcastScript = (eq) => {
                 }
             </style>
         </head>
-        <body>
+        <body class="${isScriptDarkTheme ? 'inverted' : ''}">
             <div class="container">
                 <h1>放送原稿</h1>
                 <div class="info">

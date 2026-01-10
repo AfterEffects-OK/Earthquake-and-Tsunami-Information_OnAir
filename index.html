@@ -255,6 +255,12 @@
                     </label>
                 </div>
                 <div>
+                    <label for="invert-colors-toggle" class="flex items-center cursor-pointer mt-4">
+                        <input type="checkbox" id="invert-colors-toggle" class="form-checkbox h-5 w-5 text-blue-600 rounded bg-gray-700 border-gray-600 focus:ring-blue-500">
+                        <span class="ml-3 text-gray-300">放送原稿を白黒反転する（白背景・黒文字）</span>
+                    </label>
+                </div>
+                <div>
                     <label for="loop-min-shindo-select" class="block text-sm font-medium text-gray-300 mb-1">情報画面に表示する最低震度</label>
                     <select id="loop-min-shindo-select" class="w-full p-2 border rounded-md text-white" style="background-color: #1f2937; border-color: #4b5563;">
                         <option value="10">震度1以上</option>
@@ -597,6 +603,25 @@
             // 初回レンダリング
             render();
         })();
+    </script>
+    <!-- 放送原稿の白黒反転機能用スクリプト -->
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const invertToggle = document.getElementById('invert-colors-toggle');
+            const saveButton = document.getElementById('shortcut-modal-save');
+            
+            // 設定読み込みと適用
+            const savedInvert = localStorage.getItem('invertColors') === 'true';
+            if (invertToggle) invertToggle.checked = savedInvert;
+
+            // 保存時の処理
+            if (saveButton) {
+                saveButton.addEventListener('click', () => {
+                    const isInverted = invertToggle && invertToggle.checked;
+                    localStorage.setItem('invertColors', isInverted);
+                });
+            }
+        });
     </script>
 </body>
 </html>

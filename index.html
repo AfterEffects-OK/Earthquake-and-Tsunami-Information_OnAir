@@ -254,6 +254,24 @@
                         <span class="ml-3 text-gray-300">緊急地震速報(EEW)受信時に通知音を再生する</span>
                     </label>
                 </div>
+                
+                <!-- EEW音声設定エリア -->
+                <div class="mt-4 border-t border-gray-700 pt-4">
+                    <h4 class="text-md font-bold text-gray-200 mb-3">EEW通知音詳細設定</h4>
+                    <div class="mb-3">
+                        <label for="eew-audio-output-select" class="block text-sm font-medium text-gray-300 mb-1">音声出力先</label>
+                        <select id="eew-audio-output-select" class="w-full p-2 border rounded-md text-white bg-gray-700 border-gray-600 text-sm focus:ring-blue-500 focus:border-blue-500"></select>
+                    </div>
+                    <div class="mb-2">
+                        <label class="block text-sm font-medium text-gray-300 mb-1">カスタム通知音ファイル</label>
+                        <div id="eew-sound-drop-area" class="border-2 border-dashed border-gray-600 rounded-md p-4 text-center cursor-pointer hover:border-blue-500 hover:bg-gray-700/50 transition-colors">
+                            <p class="text-sm text-gray-400 pointer-events-none">ここに音声ファイルをドラッグ＆ドロップ<br>またはクリックして選択</p>
+                            <input type="file" id="eew-sound-file-input" class="hidden" accept="audio/*">
+                        </div>
+                        <div id="eew-sound-file-info" class="hidden mt-2 flex items-center justify-between bg-gray-700 p-2 rounded border border-gray-600"><span id="eew-sound-file-name" class="text-sm text-white truncate mr-2"></span><button id="eew-sound-delete-button" class="text-red-400 hover:text-red-300 text-xs font-bold px-2 py-1 rounded border border-red-900/50 bg-red-900/20">削除</button></div>
+                    </div>
+                </div>
+
                 <div>
                     <label for="loop-min-shindo-select" class="block text-sm font-medium text-gray-300 mb-1">情報画面に表示する最低震度</label>
                     <select id="loop-min-shindo-select" class="w-full p-2 border rounded-md text-white" style="background-color: #1f2937; border-color: #4b5563;">
@@ -565,10 +583,18 @@
             // --- 外部公開API ---
             window.EEWLogic = {
                 triggerTest: () => {
-                    state.eewList = [MOCK_REAL_DATA];
-                    state.currentIndex = 0;
-                    render();
-                    resetAutoClearTimer();
+                    // script.jsのhandleEew関数を利用して、音声再生と表示更新を行う
+                    if (typeof handleEew === 'function') {
+                        // IDをユニークにして重複チェックを回避（連打しても鳴るようにする）
+                        const testData = JSON.parse(JSON.stringify(MOCK_REAL_DATA));
+                        testData.id = 'TEST_' + Date.now();
+                        handleEew(testData);
+                    } else {
+                        state.eewList = [MOCK_REAL_DATA];
+                        state.currentIndex = 0;
+                        render();
+                        resetAutoClearTimer();
+                    }
                 },
                 clearTest: () => {
                     state.eewList = [];

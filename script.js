@@ -87,12 +87,68 @@ let loopPlaybackMinScale = 30; // デフォルトは震度3以上
 let playEewSound = true; // デフォルトはON
 let eewAudioObject = null; // プリロード用のAudioオブジェクト
 let currentEewOnEnded = null; // 現在再生中のEEW音声のendedリスナーを保持
+let customEewSoundBlob = null; // カスタム音声データ(Blob)
+let audioOutputDeviceId = localStorage.getItem('audioOutputDeviceId') || 'default'; // 音声出力先デバイスID
+
 // --- 連続EEW対応用のグローバル変数 ---
 let eewQueue = []; // 表示すべきEEW情報を保持するキュー
 let eewDisplayIntervalId = null; // EEWを10秒ごとに切り替えるためのタイマーID
 let eewClearTimeoutId = null; // 60秒後にEEW表示をすべてクリアするためのタイマーID
 let currentEewIndex = 0; // 現在表示しているEEWのインデックス
 
+
+// --- IndexedDB ユーティリティ (カスタム音声保存用) ---
+const IDB_NAME = 'EarthquakeMonitorDB';
+const IDB_STORE = 'Settings';
+const IDB_KEY_SOUND = 'customEewSound';
+
+const openDB = () => {
+    return new Promise((resolve, reject) => {
+        const request = indexedDB.open(IDB_NAME, 1);
+        request.onupgradeneeded = (e) => {
+            const db = e.target.result;
+            if (!db.objectStoreNames.contains(IDB_STORE)) {
+                db.createObjectStore(IDB_STORE);
+            }
+        };
+        request.onsuccess = (e) => resolve(e.target.result);
+        request.onerror = (e) => reject(e.target.error);
+    });
+};
+
+const saveCustomSoundToDB = async (file) => {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+        const tx = db.transaction(IDB_STORE, 'readwrite');
+        const store = tx.objectStore(IDB_STORE);
+        const request = store.put(file, IDB_KEY_SOUND);
+        request.onsuccess = () => resolve();
+        request.onerror = (e) => reject(e.target.error);
+    });
+};
+
+const loadCustomSoundFromDB = async () => {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+        const tx = db.transaction(IDB_STORE, 'readonly');
+        const store = tx.objectStore(IDB_STORE);
+        const request = store.get(IDB_KEY_SOUND);
+        request.onsuccess = (e) => resolve(e.target.result);
+        request.onerror = (e) => reject(e.target.error);
+    });
+};
+
+const deleteCustomSoundFromDB = async () => {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+        const tx = db.transaction(IDB_STORE, 'readwrite');
+        const store = tx.objectStore(IDB_STORE);
+        const request = store.delete(IDB_KEY_SOUND);
+        request.onsuccess = () => resolve();
+        request.onerror = (e) => reject(e.target.error);
+    });
+};
+// ---------------------------------------------------
 
 /**
  * 手動でふりがなを登録するための辞書（データベース）
@@ -393,20 +449,28 @@ const handleEew = (eewData) => {
         }
 
         if (eewAudioObject) {
-        // 連続して速報が来た場合、直ちに停止してリセットする
-        eewAudioObject.pause();
-        if (currentEewOnEnded) {
-            eewAudioObject.removeEventListener('ended', currentEewOnEnded);
-            currentEewOnEnded = null;
-        }
+            // 連続して速報が来た場合、直ちに停止してリセットする
+            eewAudioObject.pause();
+            if (currentEewOnEnded) {
+                eewAudioObject.removeEventListener('ended', currentEewOnEnded);
+                currentEewOnEnded = null;
+            }
 
-        let playCount = 0;
-        const maxPlayCount = 2; // 再生回数を2回に設定
+            let playCount = 0;
+            const maxPlayCount = 2; // 再生回数を2回に設定
 
-        const playSound = () => {
-            eewAudioObject.currentTime = 0; // 再生位置を最初に戻す
-            eewAudioObject.play().then(() => {
-                console.log('EEW通知音を再生しました。');
+            const playSound = async () => {
+                // 出力先デバイスの設定 (対応ブラウザのみ)
+                if (typeof eewAudioObject.setSinkId === 'function' && audioOutputDeviceId !== 'default') {
+                    try {
+                        await eewAudioObject.setSinkId(audioOutputDeviceId);
+                    } catch (err) {
+                        console.warn('音声出力先の設定に失敗しました:', err);
+                    }
+                }
+                eewAudioObject.currentTime = 0; // 再生位置を最初に戻す
+                eewAudioObject.play().then(() => {
+                    console.log('EEW通知音を再生しました。');
             }).catch(error => {
                 console.warn(`EEW通知音の再生に失敗しました (${playCount + 1}回目):`, error);
                 if (error.name === 'NotAllowedError') {
@@ -4463,6 +4527,14 @@ const setupShortcutModal = () => {
     const minScaleSelect = document.getElementById('loop-min-shindo-select');
     const listMinScaleSelect = document.getElementById('list-min-shindo-select');
     const eewSoundToggle = document.getElementById('eew-sound-toggle');
+    
+    // EEW音声設定用要素
+    const outputSelect = document.getElementById('eew-audio-output-select');
+    const dropArea = document.getElementById('eew-sound-drop-area');
+    const fileInput = document.getElementById('eew-sound-file-input');
+    const fileInfo = document.getElementById('eew-sound-file-info');
+    const fileNameDisplay = document.getElementById('eew-sound-file-name');
+    const deleteButton = document.getElementById('eew-sound-delete-button');
 
     openButton.addEventListener('click', () => {
         modal.classList.remove('hidden');
@@ -4471,6 +4543,34 @@ const setupShortcutModal = () => {
         listMinScaleSelect.value = CONFIG.MIN_LIST_SCALE;
         eewSoundToggle.checked = playEewSound;
         minScaleSelect.value = loopPlaybackMinScale;
+        
+        // 音声出力デバイスの列挙と設定
+        if (navigator.mediaDevices && navigator.mediaDevices.enumerateDevices) {
+            navigator.mediaDevices.enumerateDevices().then(devices => {
+                outputSelect.innerHTML = ''; // クリア
+                const defaultOption = document.createElement('option');
+                defaultOption.value = 'default';
+                defaultOption.textContent = 'デフォルト';
+                outputSelect.appendChild(defaultOption);
+
+                devices.filter(d => d.kind === 'audiooutput').forEach(device => {
+                    const option = document.createElement('option');
+                    option.value = device.deviceId;
+                    option.textContent = device.label || `スピーカー ${outputSelect.length}`;
+                    outputSelect.appendChild(option);
+                });
+                outputSelect.value = audioOutputDeviceId;
+            }).catch(err => console.error('デバイスの列挙に失敗:', err));
+        }
+
+        // カスタム音声ファイル情報の表示更新
+        if (customEewSoundBlob) {
+            fileInfo.classList.remove('hidden');
+            fileNameDisplay.textContent = customEewSoundBlob.name || 'カスタム音声ファイル';
+        } else {
+            fileInfo.classList.add('hidden');
+        }
+
         input.focus();
     });
 
@@ -4495,6 +4595,55 @@ const setupShortcutModal = () => {
         input.value = formatShortcutText(shortcutSetting);
     });
 
+    // --- 音声ファイルのドラッグ＆ドロップ処理 ---
+    const handleFileSelect = async (file) => {
+        if (!file || !file.type.startsWith('audio/')) {
+            alert('音声ファイルを選択してください。');
+            return;
+        }
+        try {
+            await saveCustomSoundToDB(file);
+            customEewSoundBlob = file;
+            fileInfo.classList.remove('hidden');
+            fileNameDisplay.textContent = file.name;
+            preloadEewSound(); // 音声をリロード
+            alert('カスタム通知音を設定しました。');
+        } catch (e) {
+            console.error('音声ファイルの保存に失敗:', e);
+            alert('音声ファイルの保存に失敗しました。');
+        }
+    };
+
+    dropArea.addEventListener('click', () => fileInput.click());
+    fileInput.addEventListener('change', (e) => {
+        if (e.target.files.length > 0) handleFileSelect(e.target.files[0]);
+        e.target.value = '';
+    });
+
+    dropArea.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dropArea.classList.add('border-blue-500', 'bg-gray-600');
+    });
+    dropArea.addEventListener('dragleave', () => {
+        dropArea.classList.remove('border-blue-500', 'bg-gray-600');
+    });
+    dropArea.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropArea.classList.remove('border-blue-500', 'bg-gray-600');
+        if (e.dataTransfer.files.length > 0) handleFileSelect(e.dataTransfer.files[0]);
+    });
+
+    deleteButton.addEventListener('click', async () => {
+        try {
+            await deleteCustomSoundFromDB();
+            customEewSoundBlob = null;
+            fileInfo.classList.add('hidden');
+            preloadEewSound(); // デフォルト音声に戻す
+        } catch (e) {
+            console.error('音声ファイルの削除に失敗:', e);
+        }
+    });
+
     saveButton.addEventListener('click', () => {
         // 設定を保存
         localStorage.setItem('autoplayShortcut', JSON.stringify(shortcutSetting));
@@ -4504,6 +4653,9 @@ const setupShortcutModal = () => {
         localStorage.setItem('listMinScale', CONFIG.MIN_LIST_SCALE);
         playEewSound = eewSoundToggle.checked;
         localStorage.setItem('playEewSound', playEewSound);
+        
+        audioOutputDeviceId = outputSelect.value;
+        localStorage.setItem('audioOutputDeviceId', audioOutputDeviceId);
 
         // 現在選択されている地震の表示を新しい設定で更新する
         if (selectedCardId) {
@@ -4848,7 +5000,13 @@ const loadManualKanaDict = () => {
  * EEW音声ファイルをプリロードする
  */
 const preloadEewSound = () => {
-    eewAudioObject = new Audio('https://raw.githubusercontent.com/AfterEffects-OK/Earthquake-and-Tsunami-Information_OnAir/main/sound/EEW_Woman_2.aac');
+    let src = 'https://raw.githubusercontent.com/AfterEffects-OK/Earthquake-and-Tsunami-Information_OnAir/main/sound/EEW_Woman_2.aac';
+    
+    if (customEewSoundBlob) {
+        src = URL.createObjectURL(customEewSoundBlob);
+    }
+
+    eewAudioObject = new Audio(src);
     eewAudioObject.preload = 'auto'; // ブラウザに音声のプリロードを指示
     // エラーハンドリング追加
     eewAudioObject.addEventListener('error', (e) => {
@@ -5065,7 +5223,17 @@ window.onload = async () => {
 
     // ★★★ 最初に読み仮名辞書を生成する ★★★
     await buildKanaDictionary();
-    preloadEewSound(); // EEW音声ファイルをプリロード
+    
+    // ★★★ カスタム音声をDBから読み込み ★★★
+    try {
+        const savedSound = await loadCustomSoundFromDB();
+        if (savedSound) {
+            customEewSoundBlob = savedSound;
+        }
+    } catch (e) {
+        console.warn('カスタム音声の読み込みに失敗しました:', e);
+    }
+    preloadEewSound(); // EEW音声ファイルをプリロード (カスタムがあればそれが使われる)
 
     // 保存された一覧フィルター設定を読み込む
     const savedListMinScale = localStorage.getItem('listMinScale');

@@ -5135,18 +5135,24 @@ const generateAndShowBroadcastScript = (eq) => {
                 .city-name { display: inline-block; } /* 市町村名が途中で改行されるのを防ぐ */
                 #back-to-top {
                     display: none; /* Initially hidden */
-                    position: fixed; bottom: 2rem; right: 2rem; z-index: 100;
+                    position: fixed; top: 1rem; right: 10rem; z-index: 100;
                     border: 1px solid #ccc; outline: none; background-color: #f0f0f0; color: #333;
-                    cursor: pointer; padding: 0.5rem 1rem; border-radius: 6px; font-size: 1rem;
-                    transition: background-color 0.3s;
+                    cursor: pointer; padding: 1.5rem 2.5rem; border-radius: 12px; font-size: 1.5rem; font-weight: bold;
+                    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+                    transition: background-color 0.3s, transform 0.2s;
                 }
-                #invert-colors-button {
+                #back-to-top:hover { transform: translateY(-2px); }
+                .control-buttons {
                     position: fixed; top: 1rem; right: 1rem; z-index: 101;
+                    display: flex; flex-direction: column; gap: 0.5rem;
+                }
+                .control-btn {
                     border: 1px solid #ccc; outline: none; background-color: #f0f0f0; color: #333;
                     cursor: pointer; padding: 0.5rem 1rem; border-radius: 6px; font-size: 0.9rem;
                     transition: background-color 0.3s, color 0.3s, border-color 0.3s;
+                    text-align: center;
                 }
-                #invert-colors-button:hover { background-color: #e0e0e0; }
+                .control-btn:hover { background-color: #e0e0e0; }
 
                 /* Inverted (dark mode) styles */
                 body.inverted { background-color: #1a1a1a; color: #e0e0e0; }
@@ -5159,16 +5165,16 @@ const generateAndShowBroadcastScript = (eq) => {
                     background-color: #444; color: #e0e0e0; border-color: #666;
                 }
                 body.inverted #back-to-top:hover { background-color: #555; }
-                body.inverted #invert-colors-button {
+                body.inverted .control-btn {
                     background-color: #444; color: #e0e0e0; border-color: #666;
                 }
-                body.inverted #invert-colors-button:hover { background-color: #555; }
+                body.inverted .control-btn:hover { background-color: #555; }
 
                 #back-to-top:hover { background-color: #e0e0e0; }
                 @media print {
                     body { background-color: #fff; padding: 0; }
                     .container { box-shadow: none; border: none; }
-                    #back-to-top, #invert-colors-button { display: none !important; } /* 印刷時には非表示 */
+                    #back-to-top, .control-buttons { display: none !important; } /* 印刷時には非表示 */
                 }
             </style>
         </head>
@@ -5183,7 +5189,11 @@ const generateAndShowBroadcastScript = (eq) => {
                 <pre>${fullScript}</pre>
             </div>
 
-            <button id="invert-colors-button" title="白黒反転">白黒反転</button>
+            <div class="control-buttons">
+                <button id="close-button" class="control-btn" title="ページを閉じる">閉じる</button>
+                <button id="invert-colors-button" class="control-btn" title="白黒反転">白黒反転</button>
+                <button id="fullscreen-button" class="control-btn" title="全画面表示">全画面表示</button>
+            </div>
             <button id="back-to-top" title="ページのトップに戻る">▲ ページのトップへ</button>
 
             <script>
@@ -5191,6 +5201,8 @@ const generateAndShowBroadcastScript = (eq) => {
                     const doc = document;
                     const topButton = doc.getElementById('back-to-top');
                     const invertButton = doc.getElementById('invert-colors-button');
+                    const fullscreenButton = doc.getElementById('fullscreen-button');
+                    const closeButton = doc.getElementById('close-button');
 
                     if (topButton) {
                         doc.addEventListener('scroll', function() {
@@ -5205,6 +5217,32 @@ const generateAndShowBroadcastScript = (eq) => {
                     if (invertButton) {
                         invertButton.addEventListener('click', function() {
                             doc.body.classList.toggle('inverted');
+                        });
+                    }
+
+                    if (fullscreenButton) {
+                        fullscreenButton.addEventListener('click', function() {
+                            if (!doc.fullscreenElement) {
+                                doc.documentElement.requestFullscreen().catch(err => console.log(err));
+                            } else {
+                                doc.exitFullscreen();
+                            }
+                        });
+
+                        doc.addEventListener('fullscreenchange', function() {
+                            if (doc.fullscreenElement) {
+                                fullscreenButton.textContent = '通常画面に戻す';
+                                fullscreenButton.title = '通常画面に戻す';
+                            } else {
+                                fullscreenButton.textContent = '全画面表示';
+                                fullscreenButton.title = '全画面表示';
+                            }
+                        });
+                    }
+
+                    if (closeButton) {
+                        closeButton.addEventListener('click', function() {
+                            window.close();
                         });
                     }
                 })();

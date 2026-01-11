@@ -225,6 +225,22 @@
                     </div>
                 </div>
 
+                <!-- EEW発報履歴管理エリア -->
+                <div class="mt-4 border-t border-gray-700 pt-4">
+                    <h4 class="text-md font-bold text-gray-200 mb-3">EEW発報履歴</h4>
+                    <div class="flex space-x-3">
+                        <button id="show-eew-log-button" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition text-sm">
+                            履歴を表示
+                        </button>
+                        <button id="download-eew-log-button" class="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-lg transition text-sm">
+                            履歴をCSV保存
+                        </button>
+                        <button id="clear-eew-log-button" class="bg-red-900 hover:bg-red-800 text-white font-semibold py-2 px-4 rounded-lg transition text-sm">
+                            履歴を削除
+                        </button>
+                    </div>
+                </div>
+
                 <div>
                     <label for="loop-min-shindo-select" class="block text-sm font-medium text-gray-300 mb-1">情報画面に表示する最低震度</label>
                     <select id="loop-min-shindo-select" class="w-full p-2 border rounded-md text-white" style="background-color: #1f2937; border-color: #4b5563;">
@@ -306,6 +322,35 @@
                 <button id="kana-db-modal-close" class="bg-gray-600 hover:bg-gray-700 text-white font-semibold py-2 px-4 rounded-lg transition">キャンセル</button>
                 <button id="kana-db-modal-save" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition">保存して閉じる</button>
          </div>
+    </div>
+
+    <!-- EEW履歴表示モーダル -->
+    <div id="eew-log-modal" class="fixed inset-0 bg-black bg-opacity-75 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-gray-800 p-6 rounded-lg shadow-xl w-full max-w-5xl relative flex flex-col" style="max-height: 90vh;">
+            <h3 class="text-xl font-bold mb-4 flex-shrink-0 text-white">EEW発報履歴一覧</h3>
+            <div class="flex-grow overflow-y-auto bg-gray-900/50 p-3 rounded-md border border-gray-700 mb-4">
+                <table class="w-full text-sm text-left text-gray-300">
+                    <thead class="text-xs text-gray-400 uppercase bg-gray-700 sticky top-0">
+                        <tr>
+                            <th class="px-4 py-2">受信日時</th>
+                            <th class="px-4 py-2">地震ID</th>
+                            <th class="px-4 py-2">地域</th>
+                            <th class="px-4 py-2">震度</th>
+                            <th class="px-4 py-2">M</th>
+                            <th class="px-4 py-2">報数</th>
+                            <th class="px-4 py-2">状況</th>
+                        </tr>
+                    </thead>
+                    <tbody id="eew-log-table-body">
+                        <!-- JSで生成 -->
+                    </tbody>
+                </table>
+                <p id="no-eew-log-message" class="text-gray-400 text-center mt-4 hidden">履歴はありません。</p>
+            </div>
+            <div class="flex justify-end">
+                <button id="eew-log-modal-close" class="bg-gray-600 hover:bg-gray-700 text-white font-semibold py-2 px-4 rounded-lg transition">閉じる</button>
+            </div>
+        </div>
     </div>
 
     <!-- 外部JavaScriptファイルの読み込み -->

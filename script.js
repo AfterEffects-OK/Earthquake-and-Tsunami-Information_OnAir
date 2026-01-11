@@ -96,6 +96,146 @@ let eewDisplayIntervalId = null; // EEWを10秒ごとに切り替えるための
 let eewClearTimeoutId = null; // 60秒後にEEW表示をすべてクリアするためのタイマーID
 let currentEewIndex = 0; // 現在表示しているEEWのインデックス
 
+// --- EEWログ保存機能 ---
+const EEW_LOG_KEY = 'eew_history_log';
+
+const saveEEWLog = (data) => {
+    try {
+        const history = JSON.parse(localStorage.getItem(EEW_LOG_KEY) || '[]');
+        const eventId = data.id || data.issue?.event_id || '不明';
+        const reportNum = data.issue?.serial || '不明';
+        
+        // 重複チェック (同じイベントIDかつ同じ報数の場合は保存しない)
+        if (history.some(log => log.eventId === eventId && log.reportNum === reportNum)) {
+            return;
+        }
+
+        const logEntry = {
+            timestamp: new Date().toLocaleString('ja-JP'),
+            eventId: eventId,
+            reportNum: reportNum,
+            region: data.earthquake?.hypocenter?.name || '不明',
+            intensity: data.earthquake?.maxScale ? scaleToShindo(data.earthquake.maxScale).label : '不明',
+            magnitude: data.earthquake?.hypocenter?.magnitude || '不明',
+            isCancel: data.cancelled || false
+        };
+
+        history.push(logEntry);
+        // 履歴が増えすぎないように制限（例: 1000件）
+        if (history.length > 1000) history.shift();
+
+        localStorage.setItem(EEW_LOG_KEY, JSON.stringify(history));
+        console.log('EEWログを保存しました:', logEntry);
+
+    } catch (e) {
+        console.error('EEWログ保存エラー:', e);
+    }
+};
+
+const setupEewLogControls = () => {
+    const downloadBtn = document.getElementById('download-eew-log-button');
+    const clearBtn = document.getElementById('clear-eew-log-button');
+    const showBtn = document.getElementById('show-eew-log-button');
+
+    if (downloadBtn) {
+        downloadBtn.addEventListener('click', () => {
+            const history = JSON.parse(localStorage.getItem(EEW_LOG_KEY) || '[]');
+            if (history.length === 0) {
+                alert('保存された履歴がありません。');
+                return;
+            }
+
+            const headers = ['受信日時', '地震ID', '報数', '地域', '震度', 'M', 'キャンセル'];
+            let csvContent = "data:text/csv;charset=utf-8,\uFEFF"; // BOM付き
+            csvContent += headers.join(',') + "\n";
+
+            history.forEach(row => {
+                const rowData = [
+                    `"${row.timestamp}"`,
+                    `"${row.eventId}"`,
+                    `"${row.reportNum}"`,
+                    `"${row.region}"`,
+                    `"${row.intensity}"`,
+                    `"${row.magnitude}"`,
+                    `"${row.isCancel}"`
+                ];
+                csvContent += rowData.join(',') + "\n";
+            });
+
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            const fileName = `eew_log_${new Date().toISOString().slice(0,10)}.csv`;
+            link.setAttribute("download", fileName);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        });
+    }
+
+    if (clearBtn) {
+        clearBtn.addEventListener('click', () => {
+            if (confirm('保存されているEEWの発報履歴をすべて削除しますか？\nこの操作は取り消せません。')) {
+                localStorage.removeItem(EEW_LOG_KEY);
+                alert('履歴を削除しました。');
+            }
+        });
+    }
+
+    if (showBtn) {
+        showBtn.addEventListener('click', () => {
+            const modal = document.getElementById('eew-log-modal');
+            const tbody = document.getElementById('eew-log-table-body');
+            const noMsg = document.getElementById('no-eew-log-message');
+            
+            if (!modal || !tbody) return;
+            
+            const history = JSON.parse(localStorage.getItem(EEW_LOG_KEY) || '[]');
+            tbody.innerHTML = '';
+            
+            if (history.length === 0) {
+                if (noMsg) noMsg.classList.add('hidden');
+                const tr = document.createElement('tr');
+                tr.innerHTML = '<td colspan="7" class="px-4 py-8 text-center text-gray-400">履歴はありません。</td>';
+                tbody.appendChild(tr);
+            } else {
+                if (noMsg) noMsg.classList.add('hidden');
+                // 新しい順に表示
+                [...history].reverse().forEach(log => {
+                    const tr = document.createElement('tr');
+                    tr.className = 'border-b border-gray-700 hover:bg-gray-700/50';
+                    
+                    let statusBadge = '';
+                    if (log.isCancel) {
+                        statusBadge = '<span class="px-2 py-1 rounded bg-gray-600 text-white text-xs">キャンセル</span>';
+                    } else {
+                        statusBadge = '<span class="px-2 py-1 rounded bg-blue-900 text-blue-200 text-xs">発表</span>';
+                    }
+
+                    tr.innerHTML = `
+                        <td class="px-4 py-2 whitespace-nowrap">${log.timestamp}</td>
+                        <td class="px-4 py-2 font-mono text-xs">${log.eventId}</td>
+                        <td class="px-4 py-2">${log.region}</td>
+                        <td class="px-4 py-2">${log.intensity}</td>
+                        <td class="px-4 py-2">M${log.magnitude}</td>
+                        <td class="px-4 py-2">第${log.reportNum}報</td>
+                        <td class="px-4 py-2">${statusBadge}</td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            }
+            
+            modal.classList.remove('hidden');
+        });
+    }
+
+    const logModal = document.getElementById('eew-log-modal');
+    const logModalClose = document.getElementById('eew-log-modal-close');
+    if (logModalClose && logModal) {
+        logModalClose.addEventListener('click', () => logModal.classList.add('hidden'));
+        logModal.addEventListener('click', (e) => { if (e.target === logModal) logModal.classList.add('hidden'); });
+    }
+};
 
 // --- IndexedDB ユーティリティ (カスタム音声保存用) ---
 const IDB_NAME = 'EarthquakeMonitorDB';
@@ -423,6 +563,9 @@ const handleEew = (eewData) => {
     if (magnitude > 0) {
         alertText += ` M${magnitude}`;
     }
+
+    // ログ保存
+    saveEEWLog(eewData);
 
     // --- 連続EEW対応: キューに情報を追加 ---
     // 既に同じIDのEEWがキューにあれば追加しない
@@ -5311,6 +5454,9 @@ window.onload = async () => {
 
     // ★★★ 追加: ふりがな辞書管理モーダルのセットアップ ★★★
     setupKanaDbModal();
+
+    // ★★★ 追加: EEWログ管理ボタンのセットアップ ★★★
+    setupEewLogControls();
 
     // 初回表示: データを取得していない状態のメッセージを設定
     document.getElementById('fetch-time-display').textContent = '最終取得日時: データを取得していません';

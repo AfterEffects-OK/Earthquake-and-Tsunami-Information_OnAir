@@ -1,5 +1,6 @@
 // --- ふりがな辞書 (動的生成) ---
 let KANA_DICT = {};
+let PRESET_KANA_DICT = {}; // プリセット辞書用
 
 /**
  * カタカナをひらがなに変換する
@@ -40,6 +41,23 @@ const buildKanaDictionary = async () => {
 
     } catch (error) {
         console.error('読み仮名辞書の生成に失敗しました:', error);
+    }
+};
+
+/**
+ * プリセットの読み仮名辞書をJSONファイルから読み込む
+ */
+const loadPresetKanaDictionary = async () => {
+    try {
+        const response = await fetch('Preset_kana_dictionary.json');
+        if (!response.ok) {
+            throw new Error(`Failed to fetch Preset_kana_dictionary.json: ${response.status}`);
+        }
+        PRESET_KANA_DICT = await response.json();
+        console.log('プリセット読み仮名辞書の読み込みが完了しました。', `(${Object.keys(PRESET_KANA_DICT).length}件)`);
+    } catch (error) {
+        // ファイルがない場合やエラー時は警告のみ出し、処理は継続する
+        console.warn('プリセット読み仮名辞書の読み込みをスキップしました:', error.message);
     }
 };
 
@@ -321,19 +339,28 @@ let kanaValueInput = null;
  */
 const getKana = (kanji) => {
     if (!kanji) return '';
+    
+    // "都道府県名_市区町村名" の形式から市区町村名を抽出
+    const parts = kanji.split('_');
+    const municipality = parts.length > 1 ? parts[1] : parts[0];
 
-    // 1. 手動登録辞書を最優先で検索。キーが存在すれば、その値（空文字列を含む）を返す
+    // 1. 気象庁データ (KANA_DICT) を最優先で検索
+    const jmaRaw = KANA_DICT[municipality] || KANA_DICT[municipality.replace(/（.+?）/g, '')];
+    if (jmaRaw) {
+        return katakanaToHiragana(jmaRaw);
+    }
+
+    // 2. プリセット辞書を検索 (形式: "都道府県名_市区町村名")
+    if (PRESET_KANA_DICT.hasOwnProperty(kanji)) {
+        return PRESET_KANA_DICT[kanji];
+    }
+
+    // 3. 手動登録辞書を検索 (形式: "都道府県名_市区町村名")
     if (MANUAL_KANA_DICT.hasOwnProperty(kanji)) {
         return MANUAL_KANA_DICT[kanji];
     }
 
-    // "都道府県名_市区町村名" の形式を想定
-    const parts = kanji.split('_');
-    const municipality = parts.length > 1 ? parts[1] : parts[0];
-
-    // 辞書検索
-    const kana = KANA_DICT[municipality] || KANA_DICT[municipality.replace(/（.+?）/g, '')] || ''; // "（" 以降を削除しても検索
-    return katakanaToHiragana(kana);
+    return '';
 };
 
 // --- ユーティリティ関数と設定 ---
@@ -5479,6 +5506,9 @@ window.onload = async () => {
 
     // ★★★ 最初に読み仮名辞書を生成する ★★★
     await buildKanaDictionary();
+    
+    // ★★★ プリセット辞書を読み込む ★★★
+    await loadPresetKanaDictionary();
     
     // ★★★ カスタム音声をDBから読み込み ★★★
     try {

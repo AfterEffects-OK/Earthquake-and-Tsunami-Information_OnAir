@@ -103,6 +103,7 @@ let loopPlaybackMinScale = 30; // デフォルトは震度3以上
 // ------------------------------------
 // --- EEW通知音設定用のグローバル変数 ---
 let playEewSound = true; // デフォルトはON
+let ignoreOldEew = true; // 最新の速報のみ表示するかどうかの設定
 let eewAudioObject = null; // プリロード用のAudioオブジェクト
 let currentEewOnEnded = null; // 現在再生中のEEW音声のendedリスナーを保持
 let customEewSoundBlob = null; // カスタム音声データ(Blob)
@@ -787,34 +788,38 @@ const fetchEarthquakeData = async () => {
                     "domesticTsunami": "Warning" // 津波警報
                 },
                 "points": [
-                    { "pref": "神奈川県", "addr": "神奈川県横浜市", "scale": 70, "isArea": true },
-                    { "pref": "神奈川県", "addr": "神奈川県小田原市", "scale": 70, "isArea": true },
-                    { "pref": "東京都", "addr": "東京都千代田区", "scale": 60, "isArea": true },
-                    { "pref": "千葉県", "addr": "千葉県館山市", "scale": 60, "isArea": true },
-                    { "pref": "埼玉県", "addr": "埼玉県さいたま市", "scale": 55, "isArea": true },
-                    { "pref": "山梨県", "addr": "山梨県甲府市", "scale": 55, "isArea": true },
-                    { "pref": "静岡県", "addr": "静岡県御殿場市", "scale": 50, "isArea": true }
+                {"pref": "神奈川県", "addr": "神奈川県横浜市", "scale": 70, "isArea": true},
+                {"pref": "神奈川県", "addr": "神奈川県小田原市", "scale": 70, "isArea": true},
+                {"pref": "東京都", "addr": "東京都千代田区", "scale": 60, "isArea": true},
+                {"pref": "千葉県", "addr": "千葉県館山市", "scale": 60, "isArea": true},
+                {"pref": "埼玉県", "addr": "埼玉県さいたま市", "scale": 55, "isArea": true},
+                {"pref": "山梨県", "addr": "山梨県甲府市", "scale": 55, "isArea": true},
+                {"pref": "静岡県", "addr": "静岡県御殿場市", "scale": 50, "isArea": true}
                 ]
             },
-            // --- 訓練用の大正関東大震災津波情報 (code: 552) ---
-            {
-                "code": 552,
-                "issue": {
-                    "source": "気象庁",
-                    "time": "1923/09/01 12:01:00",
-                    "type": "ScaleAndDestination",
-                    "correct": "None",
-                    "event_id": "19230901115800" // 地震情報と紐付けるID
-                },
-                "tsunami": {
-                    "forecasts": [
-                        { "grade": "Warning", "area": { "name": "相模湾・三浦半島" } },
-                        { "grade": "Warning", "area": { "name": "静岡県" } },
-                        { "grade": "Advisory", "area": { "name": "千葉県九十九里・外房" } },
-                        { "grade": "Advisory", "area": { "name": "伊豆諸島" } }
-                    ]
-                }
-            },
+        // --- 訓練用の津波情報 (code: 552) ---
+        {
+            "areas": [
+                {"firstHeight":{"condition":"第１波の到達を確認"},"grade":"Watch","immediate":false,"maxHeight":{"description":"１ｍ","value":1},"name":"北海道太平洋沿岸東部"},
+                {"firstHeight":{"condition":"第１波の到達を確認"},"grade":"Watch","immediate":false,"maxHeight":{"description":"１ｍ","value":1},"name":"北海道太平洋沿岸中部"},
+                {"firstHeight":{"condition":"第１波の到達を確認"},"grade":"Watch","immediate":false,"maxHeight":{"description":"１ｍ","value":1},"name":"北海道太平洋沿岸西部"},
+                {"firstHeight":{"condition":"津波到達中と推測"},"grade":"Watch","immediate":true,"maxHeight":{"description":"１ｍ","value":1},"name":"青森県日本海沿岸"},
+                {"firstHeight":{"condition":"第１波の到達を確認"},"grade":"Watch","immediate":false,"maxHeight":{"description":"１ｍ","value":1},"name":"青森県太平洋沿岸"},
+                {"firstHeight":{"condition":"第１波の到達を確認"},"grade":"Watch","immediate":false,"maxHeight":{"description":"１ｍ","value":1},"name":"岩手県"},
+                {"firstHeight":{"condition":"第１波の到達を確認"},"grade":"Watch","immediate":false,"maxHeight":{"description":"１ｍ","value":1},"name":"宮城県"},
+                {"firstHeight":{"condition":"第１波の到達を確認"},"grade":"Watch","immediate":false,"maxHeight":{"description":"１ｍ","value":1},"name":"福島県"}
+            ],
+            "cancelled":false,
+            "code":552,
+            "id":"69e60ac6e88ee598246bec43",
+            "issue":{"source":"気象庁","time":"2026/04/20 20:15:17","type":"Focus"},
+            "time":"2026/04/20 20:15:18.545",
+            "timestamp":{"convert":"2026/04/20 20:15:18.02","register":"2026/04/20 20:15:18.545"},
+            "user_agent":"jmaxml-seis-parser-go, relay, register-api","ver":"20231023"
+        },
+        {
+            "areas":[],"cancelled":true,"code":552,"id":"69e63c1be88ee598246bec48","issue":{"source":"気象庁","time":"2026/04/20 23:45:46","type":"Focus"},"time":"2026/04/20 23:45:47.888","timestamp":{"convert":"2026/04/20 23:45:47.86","register":"2026/04/20 23:45:47.888"},"user_agent":"jmaxml-seis-parser-go, relay, register-api","ver":"20231023"
+        },
             // --- 【新規追加】訓練用の東日本大震災津波観測情報 (code: 556) ---
             {
                 "code": 556,
@@ -872,27 +877,6 @@ const fetchEarthquakeData = async () => {
                     { "pref": "宮城県", "addr": "宮城県仙台市青葉区", "scale": 40, "isArea": true },
                     { "pref": "秋田県", "addr": "秋田県秋田市", "scale": 30, "isArea": true }
                 ]
-            },
-            // --- 訓練用の十勝沖地震津波情報 (code: 552) ---
-            {
-                "code": 552,
-                "issue": {
-                    "source": "気象庁",
-                    "time": "2025/03/20 10:05:00",
-                    "type": "ScaleAndDestination",
-                    "correct": "None",
-                    "event_id": "20250320100000" // 地震情報と紐付けるID
-                },
-                "tsunami": {
-                    "forecasts": [
-                        { "grade": "Warning", "area": { "name": "北海道太平洋沿岸東部" } },
-                        { "grade": "Warning", "area": { "name": "北海道太平洋沿岸中部" } },
-                        { "grade": "Advisory", "area": { "name": "北海道太平洋沿岸西部" } },
-                        { "grade": "Advisory", "area": { "name": "青森県太平洋沿岸" } },
-                        { "grade": "Advisory", "area": { "name": "岩手県" } },
-                        { "grade": "Advisory", "area": { "name": "宮城県" } }
-                    ]
-                }
             },
             // --- 【新規追加】訓練用の南海トラフ地震EEWデータ (code: 554) ---
             {
@@ -969,43 +953,6 @@ const fetchEarthquakeData = async () => {
                     { "pref": "沖縄県", "addr": "沖縄県那覇市", "scale": 40, "isArea": true }
                 ]
             },
-            // --- 訓練用の南海トラフ津波情報 (code: 552) ---
-            {
-                "code": 552,
-                "issue": {
-                    "source": "気象庁",
-                    "time": "2025/01/02 09:05:00",
-                    "type": "ScaleAndDestination",
-                    "correct": "None",
-                    "event_id": "20250102090000" // 地震情報と紐付けるID
-                },
-                "tsunami": {
-                    "forecasts": [
-                        { "grade": "MajorWarning", "area": { "name": "静岡県" } },
-                        { "grade": "MajorWarning", "area": { "name": "愛知県外海" } },
-                        { "grade": "MajorWarning", "area": { "name": "三重県南部" } },
-                        { "grade": "MajorWarning", "area": { "name": "和歌山県" } },
-                        { "grade": "MajorWarning", "area": { "name": "徳島県" } },
-                        { "grade": "MajorWarning", "area": { "name": "高知県" } },
-                        { "grade": "MajorWarning", "area": { "name": "宮崎県" } },
-                        { "grade": "Warning", "area": { "name": "千葉県九十九里・外房" } },
-                        { "grade": "Warning", "area": { "name": "神奈川県" } },
-                        { "grade": "Warning", "area": { "name": "大阪府" } },
-                        { "grade": "Warning", "area": { "name": "兵庫県瀬戸内海沿岸" } },
-                        { "grade": "Warning", "area": { "name": "岡山県" } },
-                        { "grade": "Warning", "area": { "name": "広島県" } },
-                        { "grade": "Warning", "area": { "name": "山口県瀬戸内海沿岸" } },
-                        { "grade": "Warning", "area": { "name": "大分県" } },
-                        { "grade": "Warning", "area": { "name": "鹿児島県東部" } },
-                        { "grade": "Advisory", "area": { "name": "東京都伊豆諸島" } },
-                        { "grade": "Advisory", "area": { "name": "東京都小笠原諸島" } },
-                        { "grade": "Advisory", "area": { "name": "愛知県内海" } },
-                        { "grade": "Advisory", "area": { "name": "瀬戸内海沿岸" } },
-                        { "grade": "Advisory", "area": { "name": "九州西岸" } },
-                        { "grade": "Advisory", "area": { "name": "沖縄本島地方" } }
-                    ]
-                }
-            },
             // --- 訓練用の香川県東部地震データ (code: 551) ---
             {
                 "code": 551,
@@ -1075,36 +1022,6 @@ const fetchEarthquakeData = async () => {
                     { "pref": "福井県", "addr": "福井県福井市", "scale": 45, "isArea": true },
                     { "pref": "徳島県", "addr": "徳島県徳島市", "scale": 40, "isArea": true }
                 ]
-            },
-            // --- 訓練用の津波情報 (code: 552) ---
-            {
-                "code": 552,
-                "issue": {
-                    "source": "気象庁",
-                    "time": "2025/01/01 12:05:00",
-                    "type": "ScaleAndDestination",
-                    "correct": "None",
-                    "event_id": "20250101120000" // 地震情報と紐付けるID
-                },
-                "tsunami": {
-                    "forecasts": [
-                        // 大津波警報
-                        { "grade": "MajorWarning", "area": { "name": "石川県能登" } },
-                        { "grade": "MajorWarning", "area": { "name": "新潟県上中下越" } },
-                        // 津波警報
-                        { "grade": "Warning", "area": { "name": "山形県" } },
-                        { "grade": "Warning", "area": { "name": "兵庫県北部" } },
-                        { "grade": "Warning", "area": { "name": "北海道日本海沿岸南部" } },
-                        // 津波注意報
-                        { "grade": "Advisory", "area": { "name": "京都府" } },
-                        { "grade": "Advisory", "area": { "name": "福井県" } },
-                        { "grade": "Advisory", "area": { "name": "鳥取県" } },
-                        { "grade": "Advisory", "area": { "name": "島根県出雲・石見" } },
-                        { "grade": "Advisory", "area": { "name": "福岡県日本海沿岸" } },
-                        { "grade": "Advisory", "area": { "name": "佐賀県北部" } },
-                        { "grade": "Advisory", "area": { "name": "長崎県壱岐・対馬" } },
-                    ]
-                }
             },
             // --- 【新規追加】訓練用の東日本大震災EEWデータ (code: 554) ---
             {
@@ -2797,49 +2714,6 @@ const fetchEarthquakeData = async () => {
                     ]
                 }
             },
-            // --- 訓練用の大正関東大震災津波情報 (code: 552) ---
-            {
-                "code": 552,
-                "issue": {
-                    "source": "気象庁",
-                    "time": "1923/09/01 12:01:00",
-                    "type": "ScaleAndDestination",
-                    "correct": "None",
-                    "event_id": "19230901115800" // 地震情報と紐付けるID
-                },
-                "tsunami": {
-                    "forecasts": [
-                        { "grade": "Warning", "area": { "name": "相模湾・三浦半島" } },
-                        { "grade": "Warning", "area": { "name": "静岡県" } },
-                        { "grade": "Advisory", "area": { "name": "千葉県九十九里・外房" } },
-                        { "grade": "Advisory", "area": { "name": "伊豆諸島" } }
-                    ]
-                }
-            },
-            // --- 【新規追加】訓練用の東日本大震災津波観測情報 (code: 556) ---
-            {
-                "code": 556,
-                "cancelled": false,
-                "issue": {
-                    "source": "気象庁",
-                    "time": "2011/03/11 15:30:00",
-                    "type": "Tsunami",
-                    "event_id": "20110311144600"
-                },
-                "areas": [
-                    {
-                        "grade": "MajorWarning",
-                        "immediate": true,
-                        "name": "宮城県",
-                        "stations": [
-                            { "name": "石巻市鮎川", "time": "2011-03-11T15:26:00+09:00", "height": 8.6, "condition": "観測中" },
-                            { "name": "相馬", "time": "2011-03-11T15:20:00+09:00", "height": 9.3, "condition": "観測中" },
-                            { "name": "大船渡", "time": "2011-03-11T15:18:00+09:00", "height": 8.0, "condition": "観測中" },
-                            { "name": "釜石", "time": "2011-03-11T15:21:00+09:00", "height": 4.2, "condition": "観測中" }
-                        ]
-                    }
-                ]
-            },
 
             // --- 訓練用の十勝沖地震データ (code: 551) ---
             {
@@ -2873,27 +2747,6 @@ const fetchEarthquakeData = async () => {
                     { "pref": "宮城県", "addr": "宮城県仙台市青葉区", "scale": 40, "isArea": true },
                     { "pref": "秋田県", "addr": "秋田県秋田市", "scale": 30, "isArea": true }
                 ]
-            },
-            // --- 訓練用の十勝沖地震津波情報 (code: 552) ---
-            {
-                "code": 552,
-                "issue": {
-                    "source": "気象庁",
-                    "time": "2025/03/20 10:05:00",
-                    "type": "ScaleAndDestination",
-                    "correct": "None",
-                    "event_id": "20250320100000" // 地震情報と紐付けるID
-                },
-                "tsunami": {
-                    "forecasts": [
-                        { "grade": "Warning", "area": { "name": "北海道太平洋沿岸東部" } },
-                        { "grade": "Warning", "area": { "name": "北海道太平洋沿岸中部" } },
-                        { "grade": "Advisory", "area": { "name": "北海道太平洋沿岸西部" } },
-                        { "grade": "Advisory", "area": { "name": "青森県太平洋沿岸" } },
-                        { "grade": "Advisory", "area": { "name": "岩手県" } },
-                        { "grade": "Advisory", "area": { "name": "宮城県" } }
-                    ]
-                }
             },
                                   // --- 訓練用の南海トラフ地震データ (code: 551) ---
             {
@@ -2947,43 +2800,6 @@ const fetchEarthquakeData = async () => {
                     { "pref": "長崎県", "addr": "長崎県長崎市", "scale": 50, "isArea": true },
                     { "pref": "沖縄県", "addr": "沖縄県那覇市", "scale": 40, "isArea": true }
                 ]
-            },
-            // --- 訓練用の南海トラフ津波情報 (code: 552) ---
-            {
-                "code": 552,
-                "issue": {
-                    "source": "気象庁",
-                    "time": "2025/01/02 09:05:00",
-                    "type": "ScaleAndDestination",
-                    "correct": "None",
-                    "event_id": "20250102090000" // 地震情報と紐付けるID
-                },
-                "tsunami": {
-                    "forecasts": [
-                        { "grade": "MajorWarning", "area": { "name": "静岡県" } },
-                        { "grade": "MajorWarning", "area": { "name": "愛知県外海" } },
-                        { "grade": "MajorWarning", "area": { "name": "三重県南部" } },
-                        { "grade": "MajorWarning", "area": { "name": "和歌山県" } },
-                        { "grade": "MajorWarning", "area": { "name": "徳島県" } },
-                        { "grade": "MajorWarning", "area": { "name": "高知県" } },
-                        { "grade": "MajorWarning", "area": { "name": "宮崎県" } },
-                        { "grade": "Warning", "area": { "name": "千葉県九十九里・外房" } },
-                        { "grade": "Warning", "area": { "name": "神奈川県" } },
-                        { "grade": "Warning", "area": { "name": "大阪府" } },
-                        { "grade": "Warning", "area": { "name": "兵庫県瀬戸内海沿岸" } },
-                        { "grade": "Warning", "area": { "name": "岡山県" } },
-                        { "grade": "Warning", "area": { "name": "広島県" } },
-                        { "grade": "Warning", "area": { "name": "山口県瀬戸内海沿岸" } },
-                        { "grade": "Warning", "area": { "name": "大分県" } },
-                        { "grade": "Warning", "area": { "name": "鹿児島県東部" } },
-                        { "grade": "Advisory", "area": { "name": "東京都伊豆諸島" } },
-                        { "grade": "Advisory", "area": { "name": "東京都小笠原諸島" } },
-                        { "grade": "Advisory", "area": { "name": "愛知県内海" } },
-                        { "grade": "Advisory", "area": { "name": "瀬戸内海沿岸" } },
-                        { "grade": "Advisory", "area": { "name": "九州西岸" } },
-                        { "grade": "Advisory", "area": { "name": "沖縄本島地方" } }
-                    ]
-                }
             },
             // --- 訓練用の香川県東部地震データ (code: 551) ---
             {
@@ -3054,36 +2870,6 @@ const fetchEarthquakeData = async () => {
                     { "pref": "福井県", "addr": "福井県福井市", "scale": 45, "isArea": true },
                     { "pref": "徳島県", "addr": "徳島県徳島市", "scale": 40, "isArea": true }
                 ]
-            },
-            // --- 訓練用の津波情報 (code: 552) ---
-            {
-                "code": 552,
-                "issue": {
-                    "source": "気象庁",
-                    "time": "2025/01/01 12:05:00",
-                    "type": "ScaleAndDestination",
-                    "correct": "None",
-                    "event_id": "20250101120000" // 地震情報と紐付けるID
-                },
-                "tsunami": {
-                    "forecasts": [
-                        // 大津波警報
-                        { "grade": "MajorWarning", "area": { "name": "石川県能登" } },
-                        { "grade": "MajorWarning", "area": { "name": "新潟県上中下越" } },
-                        // 津波警報
-                        { "grade": "Warning", "area": { "name": "山形県" } },
-                        { "grade": "Warning", "area": { "name": "兵庫県北部" } },
-                        { "grade": "Warning", "area": { "name": "北海道日本海沿岸南部" } },
-                        // 津波注意報
-                        { "grade": "Advisory", "area": { "name": "京都府" } },
-                        { "grade": "Advisory", "area": { "name": "福井県" } },
-                        { "grade": "Advisory", "area": { "name": "鳥取県" } },
-                        { "grade": "Advisory", "area": { "name": "島根県出雲・石見" } },
-                        { "grade": "Advisory", "area": { "name": "福岡県日本海沿岸" } },
-                        { "grade": "Advisory", "area": { "name": "佐賀県北部" } },
-                        { "grade": "Advisory", "area": { "name": "長崎県壱岐・対馬" } },
-                    ]
-                }
             },
             // --- 訓練用の震源・震度情報 (code: 551) ---
             {
@@ -3196,7 +2982,7 @@ const fetchEarthquakeData = async () => {
         }
 
         const filteredEarthquakes = dummyData.filter(eq => eq.code === 551 && eq.earthquake && eq.earthquake.maxScale >= CONFIG.MIN_LIST_SCALE);
-
+        
         PROCESSED_EARTHQUAKES = await Promise.all(filteredEarthquakes.map(eq => processEarthquake(eq, tsunamiDetailsMap, tsunamiObservationMap)));
         return PROCESSED_EARTHQUAKES;
     }
@@ -3246,7 +3032,27 @@ const fetchEarthquakeData = async () => {
             (item.code === 556 && item.areas && item.areas.length > 0 && item.areas[0].scaleFrom !== undefined)
         );
         if (eewInfo) {
-            handleEew(eewInfo);
+            const issueTimeStr = eewInfo.issue?.time || eewInfo.time;
+            let shouldHandleEew = true; // デフォルトでは処理する
+
+            if (issueTimeStr) { // 時刻情報がある場合のみチェック
+                const issueTime = new Date(issueTimeStr.replace(/\//g, '/'));
+                const now = new Date();
+                const diffSeconds = (now - issueTime) / 1000;
+
+                // ignoreOldEewがtrueの場合、120秒以内のものだけを処理する
+                if (ignoreOldEew) {
+                    if (diffSeconds < 0 || diffSeconds >= 120) {
+                        shouldHandleEew = false; // 古い、または未来のEEWは無視
+                        console.log(`EEW通知音は設定により古いデータ（${Math.floor(diffSeconds)}秒前）のためスキップされました。`);
+                    }
+                }
+            } else {
+                console.warn('EEWの時刻情報が取得できませんでした。ignoreOldEew設定に関わらず処理します。');
+            }
+            if (shouldHandleEew) {
+                handleEew(eewInfo);
+            }
         }
 
         // --- 1. 津波情報(552)を先に処理し、event_idごとに最高の警報レベルをマップに保存 ---
@@ -4736,6 +4542,12 @@ const setupKeyboardShortcuts = () => {
         playEewSound = true; // 保存された設定がなければデフォルトで有効
     }
 
+    // 保存された古いEEWの無視設定を読み込む
+    const savedIgnoreOldEew = localStorage.getItem('ignoreOldEew');
+    if (savedIgnoreOldEew !== null) {
+        ignoreOldEew = savedIgnoreOldEew === 'true';
+    }
+
     window.addEventListener('keydown', (event) => {
         // テキスト入力中などはショートカットを無効にする
         if (event.target.tagName === 'INPUT' || event.target.tagName === 'SELECT') {
@@ -4772,6 +4584,7 @@ const setupShortcutModal = () => {
     const minScaleSelect = document.getElementById('loop-min-shindo-select');
     const listMinScaleSelect = document.getElementById('list-min-shindo-select');
     const eewSoundToggle = document.getElementById('eew-sound-toggle');
+    const eewIgnoreOldToggle = document.getElementById('eew-ignore-old-toggle');
     
     // EEW音声設定用要素
     const outputSelect = document.getElementById('eew-audio-output-select');
@@ -4787,6 +4600,7 @@ const setupShortcutModal = () => {
         input.value = formatShortcutText(shortcutSetting);
         listMinScaleSelect.value = CONFIG.MIN_LIST_SCALE;
         eewSoundToggle.checked = playEewSound;
+        eewIgnoreOldToggle.checked = ignoreOldEew;
         minScaleSelect.value = loopPlaybackMinScale;
         
         // 音声出力デバイスの列挙と設定
@@ -4898,6 +4712,8 @@ const setupShortcutModal = () => {
         localStorage.setItem('listMinScale', CONFIG.MIN_LIST_SCALE);
         playEewSound = eewSoundToggle.checked;
         localStorage.setItem('playEewSound', playEewSound);
+        ignoreOldEew = eewIgnoreOldToggle.checked;
+        localStorage.setItem('ignoreOldEew', ignoreOldEew);
         
         audioOutputDeviceId = outputSelect.value;
         localStorage.setItem('audioOutputDeviceId', audioOutputDeviceId);

@@ -3267,7 +3267,15 @@ const processEarthquake = async (earthquake, tsunamiDetailsMap, tsunamiObservati
     // ★★★ 修正: hypocenterが存在しないケースに対応 ★★★
     const epicenterName = eqData.hypocenter?.name || '不明';
     const idSource = `${eqData.time}_${epicenterName}`;
-    const syntheticId = await digestMessage(idSource);
+    let syntheticId;
+
+    // file:// プロトコルなどの crypto.subtle が利用できない環境への対策
+    try {
+        syntheticId = await digestMessage(idSource);
+    } catch (e) {
+        console.warn('Failed to generate cryptographic ID, falling back to simple ID:', e);
+        syntheticId = idSource.replace(/[^a-zA-Z0-9]/g, '_') + '_' + Math.random().toString(36).substring(2, 11);
+    }
 
     // -------------------------
 
@@ -4718,6 +4726,13 @@ const setupShortcutModal = () => {
         audioOutputDeviceId = outputSelect.value;
         localStorage.setItem('audioOutputDeviceId', audioOutputDeviceId);
 
+        // 新しい音声出力デバイスIDが選択された場合、既存のAudioオブジェクトに適用を試みる
+        if (eewAudioObject && typeof eewAudioObject.setSinkId === 'function') {
+            eewAudioObject.setSinkId(audioOutputDeviceId)
+                .then(() => console.log('EEW通知音の出力先デバイスを更新しました。'))
+                .catch(err => console.warn('EEW通知音の出力先デバイスの更新に失敗しました:', err));
+        }
+
         // 現在選択されている地震の表示を新しい設定で更新する
         if (selectedCardId) {
             const eventId = selectedCardId.substring(5); // "card-"を削除
@@ -5074,6 +5089,13 @@ const preloadEewSound = () => {
         console.error('EEW音声ファイルの読み込みに失敗しました:', e);
     });
     eewAudioObject.load(); // 明示的にロードを開始
+
+    // プリロード時に現在の設定されている出力デバイスを適用
+    if (typeof eewAudioObject.setSinkId === 'function' && audioOutputDeviceId !== 'default') {
+        eewAudioObject.setSinkId(audioOutputDeviceId)
+            .then(() => console.log('プリロード時にEEW通知音の出力先デバイスを設定しました。'))
+            .catch(err => console.warn('プリロード時にEEW通知音の出力先デバイスの設定に失敗しました:', err));
+    }
     console.log('EEW音声ファイルのプリロードを開始しました。');
 };
 

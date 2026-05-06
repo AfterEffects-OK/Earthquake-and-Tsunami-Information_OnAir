@@ -4611,23 +4611,43 @@ const setupShortcutModal = () => {
         eewIgnoreOldToggle.checked = ignoreOldEew;
         minScaleSelect.value = loopPlaybackMinScale;
         
-        // 音声出力デバイスの列挙と設定
-        if (navigator.mediaDevices && navigator.mediaDevices.enumerateDevices) {
-            navigator.mediaDevices.enumerateDevices().then(devices => {
-                outputSelect.innerHTML = ''; // クリア
-                const defaultOption = document.createElement('option');
-                defaultOption.value = 'default';
-                defaultOption.textContent = 'デフォルト';
-                outputSelect.appendChild(defaultOption);
+        // 音声出力デバイスの列挙と設定 (ラベル取得を確実にするために権限チェックを含む)
+        if (outputSelect && navigator.mediaDevices && navigator.mediaDevices.enumerateDevices) {
+            const refreshDeviceList = async () => {
+                try {
+                    // デバイスのラベル（名前）を取得するには、一度メディア権限のリクエストが必要な場合が多い
+                    // 既に許可されている場合は単に情報を取得する
+                    let devices = await navigator.mediaDevices.enumerateDevices();
+                    
+                    // もしラベルが空（名前が取得できていない）なら、一時的にgetUserMediaを呼び出してラベルを確定させる
+                    if (devices.some(d => d.kind === 'audiooutput' && !d.label) && navigator.mediaDevices.getUserMedia) {
+                        try {
+                            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                            stream.getTracks().forEach(track => track.stop()); // 取得直後に停止
+                            devices = await navigator.mediaDevices.enumerateDevices(); // 再取得
+                        } catch (e) {
+                            console.warn('オーディオデバイス名の取得用権限リクエストに失敗しました:', e);
+                        }
+                    }
 
-                devices.filter(d => d.kind === 'audiooutput').forEach(device => {
-                    const option = document.createElement('option');
-                    option.value = device.deviceId;
-                    option.textContent = device.label || `スピーカー ${outputSelect.length}`;
-                    outputSelect.appendChild(option);
-                });
-                outputSelect.value = audioOutputDeviceId;
-            }).catch(err => console.error('デバイスの列挙に失敗:', err));
+                    outputSelect.innerHTML = ''; // リストをクリア
+                    const defaultOption = document.createElement('option');
+                    defaultOption.value = 'default';
+                    defaultOption.textContent = 'デフォルト (システム設定)';
+                    outputSelect.appendChild(defaultOption);
+
+                    devices.filter(d => d.kind === 'audiooutput').forEach(device => {
+                        const option = document.createElement('option');
+                        option.value = device.deviceId;
+                        option.textContent = device.label || `出力デバイス ${outputSelect.length}`;
+                        outputSelect.appendChild(option);
+                    });
+                    outputSelect.value = audioOutputDeviceId;
+                } catch (err) {
+                    console.error('デバイスの列挙に失敗しました:', err);
+                }
+            };
+            refreshDeviceList();
         }
 
         // カスタム音声ファイル情報の表示更新
@@ -4723,8 +4743,10 @@ const setupShortcutModal = () => {
         ignoreOldEew = eewIgnoreOldToggle.checked;
         localStorage.setItem('ignoreOldEew', ignoreOldEew);
         
-        audioOutputDeviceId = outputSelect.value;
-        localStorage.setItem('audioOutputDeviceId', audioOutputDeviceId);
+        if (outputSelect) {
+            audioOutputDeviceId = outputSelect.value;
+            localStorage.setItem('audioOutputDeviceId', audioOutputDeviceId);
+        }
 
         // 新しい音声出力デバイスIDが選択された場合、既存のAudioオブジェクトに適用を試みる
         if (eewAudioObject && typeof eewAudioObject.setSinkId === 'function') {

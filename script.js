@@ -4633,15 +4633,21 @@ const setupShortcutModal = () => {
                     outputSelect.innerHTML = ''; // リストをクリア
                     const defaultOption = document.createElement('option');
                     defaultOption.value = 'default';
-                    defaultOption.textContent = 'デフォルト (システム設定)';
+                    defaultOption.textContent = 'デフォルト (システム設定)'; // Keep this as the primary default text
                     outputSelect.appendChild(defaultOption);
 
-                    devices.filter(d => d.kind === 'audiooutput').forEach(device => {
+                    const audioOutputDevices = devices.filter(d => d.kind === 'audiooutput');
+
+                    audioOutputDevices.forEach(device => {
                         const option = document.createElement('option');
                         option.value = device.deviceId;
                         option.textContent = device.label || `出力デバイス ${outputSelect.length}`;
                         outputSelect.appendChild(option);
                     });
+                    if (audioOutputDevices.length === 0) {
+                        defaultOption.textContent = 'デフォルト (デバイスが見つかりません)'; // Update default option text if no devices are found
+                        console.warn('音声出力デバイスが見つかりませんでした。HTTPS環境でアクセスしているか、ブラウザのメディア権限を確認してください。');
+                    }
                     outputSelect.value = audioOutputDeviceId;
                 } catch (err) {
                     console.error('デバイスの列挙に失敗しました:', err);

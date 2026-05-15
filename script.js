@@ -370,6 +370,9 @@ const CONFIG = {
     // P2P地震情報 API v2のエンドポイント (地震情報コード551は「震源・震度情報」)
     API_URL: 'https://api.p2pquake.net/v2/history?limit=100',
     
+    // P2P地震情報 WebSocket API エンドポイント (リアルタイム受信用)
+    WS_URL: 'wss://api.p2pquake.net/v2/ws',
+
     // 地震一覧に表示する地震の「最大」震度の最低ライン (30: 震度3)
     MIN_LIST_SCALE: 30,
     
@@ -685,6 +688,46 @@ const handleEew = (eewData) => {
 };
 
 /**
+ * 津波予報(552)をリアルタイムに処理し、アラートを表示する
+ * @param {object} data - WebSocketから取得した津波予報データ
+ */
+const handleTsunamiAlert = (data) => {
+    const dataId = data.id || `tsunami_${Date.now()}`;
+
+    // 既にキューにある場合は処理しない
+    if (eewQueue.some(e => e.id === dataId)) return;
+
+    let alertText = "";
+    if (data.cancelled) {
+        alertText = "【津波情報】 津波警報・注意報は解除されました";
+    } else {
+        const forecasts = data.tsunami?.forecasts || data.areas || [];
+        if (forecasts.length === 0) return;
+
+        // 発表されている中で最も高いレベルを特定
+        const grades = new Set();
+        forecasts.forEach(f => {
+            const g = f.grade || f.category;
+            if (g) grades.add(g);
+        });
+
+        let maxGrade = "";
+        if (grades.has('MajorWarning')) maxGrade = "大津波警報";
+        else if (grades.has('Warning')) maxGrade = "津波警報";
+        else if (grades.has('Advisory') || grades.has('Watch')) maxGrade = "津波注意報";
+
+        if (!maxGrade) return;
+        alertText = `【津波情報】 ${maxGrade}が発表されました`;
+    }
+
+    console.log('【リアルタイム】津波アラートを表示します:', alertText);
+    
+    // EEWのキューと同じ仕組みでテロップ表示
+    eewQueue.push({ id: dataId, text: alertText, data: data });
+    startEewDisplayCycle();
+};
+
+/**
  * EEWアラートの表示サイクルを開始・管理する
  */
 const startEewDisplayCycle = () => {
@@ -730,6 +773,52 @@ const stopEewDisplayCycle = () => {
     clearTimeout(eewClearTimeoutId);
     eewQueue = [];
     document.getElementById('eew-alert-container').classList.add('hidden');
+};
+
+/**
+ * P2P地震情報のWebSocket APIを使用して、リアルタイムで情報を取得する
+ */
+const setupWebSocket = () => {
+    const socket = new WebSocket(CONFIG.WS_URL);
+
+    socket.onopen = () => {
+        console.log('P2P地震情報 リアルタイム接続(WebSocket)を開始しました。');
+    };
+
+    socket.onmessage = (event) => {
+        try {
+            const data = JSON.parse(event.data);
+            // 緊急地震速報(554)または地域を含むEEW(556)を受信した場合、即座にhandleEewを呼び出す
+            if (data.code === 554 || (data.code === 556 && data.areas && data.areas.length > 0 && data.areas[0].scaleFrom !== undefined)) {
+                console.log('【リアルタイム】緊急地震速報を受信しました:', data);
+                handleEew(data);
+            }
+            
+            // 津波予報(552)を受信した場合、即座にhandleTsunamiAlertを呼び出す
+            if (data.code === 552) {
+                console.log('【リアルタイム】津波情報を受信しました:', data);
+                handleTsunamiAlert(data);
+            }
+            
+            // 地震情報(551)や津波情報(552, 地域を含まない556)を受信した際も、リストを最新にするために再取得を行う
+            if ([551, 552, 556].includes(data.code)) {
+                console.log(`【リアルタイム】情報更新を検知しました (Code: ${data.code})`);
+                refreshData();
+            }
+        } catch (e) {
+            console.error('WebSocketデータ処理エラー:', e);
+        }
+    };
+
+    socket.onclose = () => {
+        console.warn('WebSocket接続が切断されました。5秒後に再接続を試みます...');
+        setTimeout(setupWebSocket, 5000);
+    };
+
+    socket.onerror = (error) => {
+        console.error('WebSocket接続でエラーが発生しました:', error);
+        socket.close();
+    };
 };
 
 
@@ -5437,6 +5526,9 @@ window.onload = async () => {
 
     // 初回データ取得を refreshData() で実行
     await refreshData();
+
+    // リアルタイム接続(WebSocket)を開始
+    setupWebSocket();
 
     // 定期的な自動更新を設定
     refreshIntervalId = setInterval(refreshData, CONFIG.REFRESH_INTERVAL_MS);

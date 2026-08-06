@@ -5830,3 +5830,34 @@ window.onload = async () => {
     // 初回レンダリング
     render();
 })();
+
+
+// 設定モーダルの初期化またはイベント登録部分に追加してください
+
+document.addEventListener('DOMContentLoaded', () => {
+    // 「履歴を表示」ボタンの要素を取得（実際のクラス名やID名に合わせて変更してください）
+    const showHistoryBtn = document.querySelector('#show-history-btn') || 
+                           Array.from(document.querySelectorAll('button')).find(el => el.textContent.includes('履歴を表示'));
+
+    if (showHistoryBtn) {
+        showHistoryBtn.addEventListener('click', () => {
+            // ローカルストレージなどからEEW発報履歴を読み込む
+            const historyData = JSON.parse(localStorage.getItem('eew_history') || '[]');
+
+            if (historyData.length === 0) {
+                alert('EEW発報履歴はありません。');
+                return;
+            }
+
+            // 履歴を表示するためのコンソール出力、または専用モーダル・リストへの描画処理
+            console.log('EEW発報履歴:', historyData);
+            
+            // 例：簡単なポップアップや別ウィンドウ・モーダルで一覧を表示する処理
+            let historyText = historyData.map((item, index) => 
+                `${index + 1}. 日時: ${item.time} / 震源地: ${item.hypocenter} / 最大震度: ${item.maxScale}`
+            ).join('\n');
+
+            alert('【EEW発報履歴一覧】\n\n' + historyText);
+        });
+    }
+});

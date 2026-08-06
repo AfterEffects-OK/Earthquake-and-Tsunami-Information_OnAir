@@ -5836,7 +5836,7 @@ window.onload = async () => {
 
 document.addEventListener('DOMContentLoaded', () => {
     // 「履歴を表示」ボタンの要素を取得（実際のクラス名やID名に合わせて変更してください）
-    const showHistoryBtn = document.querySelector('#show-history-btn') || 
+    const showHistoryBtn = document.querySelector('#show-eew-log-button') || 
                            Array.from(document.querySelectorAll('button')).find(el => el.textContent.includes('履歴を表示'));
 
     if (showHistoryBtn) {
